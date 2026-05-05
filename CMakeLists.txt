@@ -10,21 +10,23 @@ find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 
 add_executable(OvercookedQt
     main.cpp
-    gameconstants.h
-    gamewindow.h
-    gamewindow.cpp
-    gameview.h
-    gameview.cpp
-    gamescene.h
-    gamescene.cpp
-    player.h
-    player.cpp
-    station.h
-    station.cpp
-    tileitem.h
-    tileitem.cpp
-    huditem.h
-    huditem.cpp
+    Theme.h
+    MainWindow.h
+    MainWindow.cpp
+    GameScene.h
+    GameScene.cpp
+    KitchenItem.h
+    KitchenItem.cpp
+    PlayerItem.h
+    PlayerItem.cpp
+    MenuOverlayItem.h
+    MenuOverlayItem.cpp
+    DialogOverlayItem.h
+    DialogOverlayItem.cpp
+    TutorialOverlayItem.h
+    TutorialOverlayItem.cpp
+    HudOverlayItem.h
+    HudOverlayItem.cpp
 )
 
 target_link_libraries(OvercookedQt PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets)

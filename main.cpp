@@ -1,13 +1,14 @@
 #include <QApplication>
 
-#include "gamewindow.h"
+#include "MainWindow.h"
 
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
     app.setStyle(QStringLiteral("Fusion"));
+    app.setApplicationName(QStringLiteral("Overcooked_Qt"));
 
-    GameWindow window;
+    MainWindow window;
     window.show();
 
     return app.exec();
