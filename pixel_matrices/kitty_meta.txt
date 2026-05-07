@@ -1,0 +1,1 @@
+﻿source=C:\Users\Iriya\Desktop\Overcooked\凯蒂猫.png width=1927 height=2175 format=row-major rgba hex cell_format=#RRGGBBAA

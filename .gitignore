@@ -1,5 +1,6 @@
 build/
 cmake-build-*/
+versions/*_build/
 *.user
 *.pro.user
 *.obj
@@ -16,3 +17,5 @@ xpdf-tools/
 xpdf-tools-win-4.06.zip
 assignment_extracted.txt
 assignment_extracted_utf8.txt
+
+厨房场景*.png

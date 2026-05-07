@@ -1,33 +1,69 @@
 #include "MenuOverlayItem.h"
 
+#include <cmath>
+
+#include <QCoreApplication>
+#include <QDir>
+#include <QImage>
+#include <QLinearGradient>
 #include <QPainter>
+#include <QPainterPath>
 #include <QStringList>
 
 #include "Theme.h"
 
 namespace {
+QImage loadArtwork(const QString &preferred)
+{
+    const QString appDir = QCoreApplication::applicationDirPath();
+    const QStringList candidates = {
+        QDir(appDir).absoluteFilePath(QStringLiteral("../") + preferred),
+        QDir(appDir).absoluteFilePath(QStringLiteral("../../") + preferred),
+        QDir::current().absoluteFilePath(preferred),
+        QDir(QStringLiteral("C:/Users/Iriya/Desktop/Overcooked")).absoluteFilePath(preferred)
+    };
+
+    for (const QString &path : candidates) {
+        QImage image(path);
+        if (!image.isNull()) {
+            return image;
+        }
+    }
+
+    return {};
+}
+
+QImage menuPreview()
+{
+    QImage image = loadArtwork(QStringLiteral("菜单厨房.png"));
+    if (!image.isNull()) {
+        return image;
+    }
+    return loadArtwork(QStringLiteral("厨房场景.png"));
+}
+
 QString difficultyLabel(int languageOption, int difficultyOption)
 {
     if (languageOption == MenuOverlayItem::ChineseLanguage) {
         switch (difficultyOption) {
         case MenuOverlayItem::DifficultyOne:
-            return QStringLiteral("1 休闲协作");
+            return QStringLiteral("轻松");
         case MenuOverlayItem::DifficultyTwo:
-            return QStringLiteral("2 限时挑战");
+            return QStringLiteral("限时");
         case MenuOverlayItem::DifficultyThree:
         default:
-            return QStringLiteral("3 限时糊锅");
+            return QStringLiteral("糊锅");
         }
     }
 
     switch (difficultyOption) {
     case MenuOverlayItem::DifficultyOne:
-        return QStringLiteral("1 Casual Co-op");
+        return QStringLiteral("Casual");
     case MenuOverlayItem::DifficultyTwo:
-        return QStringLiteral("2 Timed Rush");
+        return QStringLiteral("Timed");
     case MenuOverlayItem::DifficultyThree:
     default:
-        return QStringLiteral("3 Burn Risk");
+        return QStringLiteral("Burn");
     }
 }
 
@@ -36,24 +72,46 @@ QString difficultyDescription(int languageOption, int difficultyOption)
     if (languageOption == MenuOverlayItem::ChineseLanguage) {
         switch (difficultyOption) {
         case MenuOverlayItem::DifficultyOne:
-            return QStringLiteral("无限时，完成固定出餐数量即可通关。");
+            return QStringLiteral("无限时，练习寿司出餐和路线。");
         case MenuOverlayItem::DifficultyTwo:
-            return QStringLiteral("有限时，完成固定出餐数量即可通关。");
+            return QStringLiteral("有限时，尽可能多做寿司。");
         case MenuOverlayItem::DifficultyThree:
         default:
-            return QStringLiteral("有限时，锅会沸腾糊掉，需要及时出锅。");
+            return QStringLiteral("有限时，米饭放太久会糊锅。");
         }
     }
 
     switch (difficultyOption) {
     case MenuOverlayItem::DifficultyOne:
-        return QStringLiteral("No timer. Finish the delivery goal to clear.");
+        return QStringLiteral("No timer. Practice sushi routing.");
     case MenuOverlayItem::DifficultyTwo:
-        return QStringLiteral("Timed round with a fixed delivery goal.");
+        return QStringLiteral("Timed sushi score rush.");
     case MenuOverlayItem::DifficultyThree:
     default:
-        return QStringLiteral("Timed round. Ready soup can burn if ignored.");
+        return QStringLiteral("Timed rush with burning pots.");
     }
+}
+
+void drawHardPanel(QPainter *painter, const QRectF &rect, const QColor &fill, const QColor &border)
+{
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(QColor(76, 52, 37, 58));
+    painter->drawRoundedRect(rect.translated(5.0, 6.0), 6.0, 6.0);
+    painter->setBrush(border);
+    painter->drawRoundedRect(rect, 6.0, 6.0);
+    painter->setBrush(fill);
+    painter->drawRoundedRect(rect.adjusted(4.0, 4.0, -4.0, -4.0), 4.0, 4.0);
+}
+
+void drawSpark(QPainter *painter, const QPointF &center, qreal size, const QColor &color)
+{
+    painter->save();
+    painter->translate(center);
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(color);
+    painter->drawRect(QRectF(-size * 0.12, -size * 0.5, size * 0.24, size));
+    painter->drawRect(QRectF(-size * 0.5, -size * 0.12, size, size * 0.24));
+    painter->restore();
 }
 }
 
@@ -63,9 +121,10 @@ MenuOverlayItem::MenuOverlayItem(qreal width, qreal height, QGraphicsItem *paren
     , m_selectedIndex(0)
     , m_languageOption(ChineseLanguage)
     , m_difficultyOption(DifficultyOne)
+    , m_animationTime(0.0)
 {
     setZValue(80.0);
-    setCacheMode(QGraphicsItem::DeviceCoordinateCache);
+    setCacheMode(QGraphicsItem::NoCache);
     setAcceptedMouseButtons(Qt::NoButton);
 }
 
@@ -74,12 +133,20 @@ QRectF MenuOverlayItem::boundingRect() const
     return m_rect;
 }
 
+void MenuOverlayItem::advanceAnimation(qreal deltaSeconds)
+{
+    m_animationTime += deltaSeconds;
+    if (m_animationTime > 1000.0) {
+        m_animationTime = std::fmod(m_animationTime, 1000.0);
+    }
+    update();
+}
+
 void MenuOverlayItem::setSelectedIndex(int index)
 {
     if (index == m_selectedIndex) {
         return;
     }
-
     m_selectedIndex = index;
     update();
 }
@@ -94,7 +161,6 @@ void MenuOverlayItem::setLanguageOption(int languageOption)
     if (m_languageOption == languageOption) {
         return;
     }
-
     m_languageOption = languageOption;
     update();
 }
@@ -109,7 +175,6 @@ void MenuOverlayItem::setDifficultyOption(int difficultyOption)
     if (m_difficultyOption == difficultyOption) {
         return;
     }
-
     m_difficultyOption = difficultyOption;
     update();
 }
@@ -122,249 +187,176 @@ int MenuOverlayItem::difficultyOption() const
 void MenuOverlayItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *)
 {
     painter->setRenderHint(QPainter::Antialiasing, true);
+    painter->setRenderHint(QPainter::TextAntialiasing, true);
+    painter->setRenderHint(QPainter::SmoothPixmapTransform, false);
+
     drawSky(painter);
-    drawTruck(painter);
     drawKitchenWindow(painter);
+    drawTruck(painter);
     drawStoryPanel(painter);
     drawBottomBar(painter);
-    drawBunting(painter);
-    drawDecorFood(painter);
-    drawMascot(painter);
 }
 
 void MenuOverlayItem::drawSky(QPainter *painter) const
 {
-    painter->fillRect(m_rect, Theme::skyBlue());
+    QLinearGradient sky(0.0, 0.0, 0.0, m_rect.height());
+    sky.setColorAt(0.0, QColor(115, 203, 255));
+    sky.setColorAt(0.58, QColor(236, 247, 255));
+    sky.setColorAt(1.0, QColor(245, 225, 188));
+    painter->fillRect(m_rect, sky);
 
     painter->setPen(Qt::NoPen);
-    painter->setBrush(QColor(255, 255, 255, 140));
-    painter->drawEllipse(QRectF(36.0, 76.0, 220.0, 74.0));
-    painter->drawEllipse(QRectF(180.0, 98.0, 118.0, 46.0));
-    painter->drawEllipse(QRectF(1062.0, 66.0, 194.0, 68.0));
-    painter->drawEllipse(QRectF(1120.0, 110.0, 96.0, 34.0));
+    painter->setBrush(QColor(255, 255, 255, 190));
+    for (int i = 0; i < 5; ++i) {
+        const qreal x = 80.0 + i * 260.0 + std::sin(m_animationTime * 0.35 + i) * 8.0;
+        const qreal y = 68.0 + (i % 2) * 36.0;
+        painter->drawEllipse(QRectF(x, y, 74.0, 30.0));
+        painter->drawEllipse(QRectF(x + 36.0, y - 12.0, 82.0, 44.0));
+        painter->drawEllipse(QRectF(x + 94.0, y + 2.0, 64.0, 28.0));
+    }
 
-    painter->setBrush(QColor(77, 180, 90));
-    painter->drawEllipse(QRectF(-60.0, 536.0, 190.0, 200.0));
-    painter->drawEllipse(QRectF(1126.0, 542.0, 182.0, 194.0));
-}
+    painter->setBrush(QColor(235, 177, 80));
+    painter->drawRect(QRectF(0.0, m_rect.height() - 100.0, m_rect.width(), 100.0));
+    painter->setBrush(QColor(209, 127, 48));
+    painter->drawRect(QRectF(0.0, m_rect.height() - 112.0, m_rect.width(), 14.0));
 
-void MenuOverlayItem::drawTruck(QPainter *painter) const
-{
-    painter->setPen(Theme::outlinePen());
-    painter->setBrush(Theme::truckOrange());
-    painter->drawRoundedRect(QRectF(24.0, 18.0, 1236.0, 652.0), 28.0, 28.0);
-
-    painter->setBrush(Theme::truckOrangeDark());
-    painter->drawRoundedRect(QRectF(232.0, 46.0, 828.0, 520.0), 24.0, 24.0);
-
-    painter->setBrush(QColor(230, 230, 230));
-    painter->drawRoundedRect(QRectF(54.0, 622.0, 360.0, 56.0), 18.0, 18.0);
-
-    painter->setBrush(Theme::truckOrangeDark());
-    painter->drawRoundedRect(QRectF(1124.0, 138.0, 112.0, 284.0), 18.0, 18.0);
-    painter->setBrush(QColor(180, 235, 255));
-    painter->drawRoundedRect(QRectF(1152.0, 170.0, 56.0, 154.0), 18.0, 18.0);
-
-    painter->setBrush(Theme::truckOrangeDark());
-    painter->drawRoundedRect(QRectF(238.0, 578.0, 548.0, 62.0), 18.0, 18.0);
-    painter->drawRoundedRect(QRectF(284.0, 596.0, 458.0, 16.0), 8.0, 8.0);
-
-    painter->setBrush(QColor(183, 183, 183));
-    painter->drawEllipse(QRectF(120.0, 626.0, 88.0, 50.0));
-    painter->setBrush(QColor(235, 175, 64));
-    painter->drawEllipse(QRectF(152.0, 642.0, 24.0, 18.0));
+    drawSpark(painter,
+              QPointF(110.0, 165.0 + std::sin(m_animationTime * 1.2) * 4.0),
+              22.0,
+              QColor(255, 255, 255, 180));
+    drawSpark(painter,
+              QPointF(m_rect.width() - 126.0, 198.0 + std::cos(m_animationTime * 1.0) * 4.0),
+              18.0,
+              QColor(255, 244, 180, 160));
 }
 
 void MenuOverlayItem::drawKitchenWindow(QPainter *painter) const
 {
-    painter->setPen(Theme::outlinePen());
-    painter->setBrush(QColor(52, 52, 52));
-    painter->drawRoundedRect(QRectF(238.0, 84.0, 818.0, 462.0), 18.0, 18.0);
+    static const QImage preview = menuPreview();
+    const QRectF frame(194.0, 192.0, 818.0, 388.0);
+    drawHardPanel(painter, frame, QColor(248, 233, 198), QColor(93, 64, 48));
 
-    painter->setBrush(QColor(248, 248, 248));
-    painter->drawRoundedRect(QRectF(258.0, 118.0, 778.0, 352.0), 16.0, 16.0);
+    if (preview.isNull()) {
+        Theme::text(painter, frame.adjusted(30.0, 40.0, -30.0, -40.0), QStringLiteral("Kitchen Preview"), 24, true, QColor(92, 62, 46));
+        return;
+    }
 
-    painter->setBrush(Theme::warmGray());
-    painter->drawRoundedRect(QRectF(268.0, 128.0, 758.0, 332.0), 16.0, 16.0);
+    const QRectF inner = frame.adjusted(18.0, 18.0, -18.0, -18.0);
+    const qreal scale = qMin(inner.width() / preview.width(), inner.height() / preview.height());
+    const QSizeF targetSize(preview.width() * scale, preview.height() * scale);
+    const QRectF target(inner.center().x() - targetSize.width() / 2.0,
+                        inner.center().y() - targetSize.height() / 2.0 + std::sin(m_animationTime * 0.8) * 2.0,
+                        targetSize.width(),
+                        targetSize.height());
+    painter->drawImage(target, preview);
 
-    painter->setBrush(QColor(158, 158, 148));
-    painter->drawRoundedRect(QRectF(680.0, 166.0, 110.0, 146.0), 12.0, 12.0);
-    painter->drawRoundedRect(QRectF(796.0, 166.0, 110.0, 146.0), 12.0, 12.0);
-    painter->setBrush(QColor(178, 245, 255));
-    painter->drawRoundedRect(QRectF(918.0, 188.0, 94.0, 112.0), 12.0, 12.0);
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(QColor(255, 255, 255, 34));
+    painter->drawRect(QRectF(inner.left(), inner.top(), inner.width(), 38.0));
+}
 
-    painter->setBrush(QColor(176, 176, 176));
-    painter->drawRoundedRect(QRectF(458.0, 176.0, 178.0, 26.0), 10.0, 10.0);
+void MenuOverlayItem::drawTruck(QPainter *painter) const
+{
+    const QRectF logo(218.0, 38.0, 770.0, 128.0);
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(QColor(80, 46, 30, 80));
+    painter->drawRoundedRect(logo.translated(6.0, 8.0), 12.0, 12.0);
+    painter->setBrush(QColor(255, 151, 37));
+    painter->drawRoundedRect(logo, 12.0, 12.0);
+    painter->setBrush(QColor(219, 76, 28));
+    painter->drawRoundedRect(QRectF(logo.left() + 18.0, logo.bottom() - 30.0, logo.width() - 36.0, 18.0), 8.0, 8.0);
 
-    painter->setBrush(QColor(98, 98, 98));
-    painter->drawRoundedRect(QRectF(352.0, 300.0, 70.0, 18.0), 8.0, 8.0);
-    painter->drawRoundedRect(QRectF(450.0, 300.0, 70.0, 18.0), 8.0, 8.0);
-    painter->drawRoundedRect(QRectF(548.0, 300.0, 70.0, 18.0), 8.0, 8.0);
-
-    painter->setBrush(QColor(124, 124, 124));
-    painter->drawEllipse(QRectF(456.0, 242.0, 92.0, 58.0));
-    painter->drawRoundedRect(QRectF(462.0, 278.0, 80.0, 42.0), 12.0, 12.0);
-    painter->setBrush(Theme::truckOrangeDark());
-    painter->drawEllipse(QRectF(476.0, 256.0, 52.0, 18.0));
-
-    painter->setBrush(Theme::tomatoRed());
-    painter->drawEllipse(QRectF(306.0, 236.0, 38.0, 38.0));
-    painter->drawEllipse(QRectF(346.0, 236.0, 38.0, 38.0));
-    painter->setBrush(QColor(255, 249, 236));
-    painter->drawEllipse(QRectF(390.0, 236.0, 34.0, 42.0));
-    painter->setBrush(Theme::leafGreen());
-    painter->drawEllipse(QRectF(320.0, 226.0, 8.0, 8.0));
-    painter->drawEllipse(QRectF(360.0, 226.0, 8.0, 8.0));
-    painter->setBrush(QColor(247, 197, 76));
-    painter->drawEllipse(QRectF(403.0, 250.0, 8.0, 8.0));
-
-    painter->setBrush(QColor(255, 255, 255));
-    painter->drawRoundedRect(QRectF(430.0, 352.0, 416.0, 54.0), 16.0, 16.0);
-    Theme::text(painter, QRectF(446.0, 360.0, 384.0, 36.0), QStringLiteral("OVERCOOKED_QT"), 24, true, Theme::truckOrangeDeep());
+    Theme::text(painter,
+                QRectF(logo.left() + 36.0, logo.top() + 20.0, logo.width() - 72.0, 54.0),
+                QStringLiteral("胡闹厨房 overcooked!"),
+                30,
+                true,
+                QColor(255, 255, 246));
+    Theme::text(painter,
+                QRectF(logo.left() + 50.0, logo.top() + 78.0, logo.width() - 100.0, 22.0),
+                m_languageOption == ChineseLanguage ? QStringLiteral("寿司合作厨房") : QStringLiteral("Sushi Co-op Kitchen"),
+                13,
+                true,
+                QColor(86, 49, 30));
 }
 
 void MenuOverlayItem::drawStoryPanel(QPainter *painter) const
 {
     const bool zh = m_languageOption == ChineseLanguage;
-
-    Theme::roundedBox(painter, QRectF(242.0, 130.0, 282.0, 278.0), Theme::panelBlueLight());
-    Theme::roundedBox(painter, QRectF(242.0, 130.0, 282.0, 42.0), QColor(255, 173, 58));
-    Theme::text(painter,
-                QRectF(254.0, 136.0, 258.0, 28.0),
-                zh ? QStringLiteral("游戏菜单") : QStringLiteral("Game Menu"),
-                17,
-                true,
-                QColor(255, 255, 255));
-
     const QStringList labels = zh
-                                   ? QStringList{QStringLiteral("语言"), QStringLiteral("难度"), QStringLiteral("开始游戏"), QStringLiteral("退出")}
-                                   : QStringList{QStringLiteral("Language"), QStringLiteral("Difficulty"), QStringLiteral("Start Game"), QStringLiteral("Exit")};
-    const QString languageValue = zh ? QStringLiteral("中文") : QStringLiteral("English");
-    const QString difficultyValue = difficultyLabel(m_languageOption, m_difficultyOption);
+                                   ? QStringList{QStringLiteral("语言"),
+                                                 QStringLiteral("难度"),
+                                                 QStringLiteral("开始"),
+                                                 QStringLiteral("退出")}
+                                   : QStringList{QStringLiteral("Language"),
+                                                 QStringLiteral("Difficulty"),
+                                                 QStringLiteral("Start"),
+                                                 QStringLiteral("Exit")};
+    const QStringList values = {
+        zh ? QStringLiteral("中文") : QStringLiteral("English"),
+        difficultyLabel(m_languageOption, m_difficultyOption),
+        zh ? QStringLiteral("开始游戏") : QStringLiteral("Play"),
+        zh ? QStringLiteral("退出") : QStringLiteral("Quit")
+    };
+
+    const QRectF panel(164.0, 598.0, 878.0, 92.0);
+    drawHardPanel(painter, panel, QColor(255, 244, 222, 244), QColor(87, 58, 43));
 
     for (int i = 0; i < labels.size(); ++i) {
-        const QRectF rowRect(258.0, 188.0 + i * 44.0, 250.0, 34.0);
-        const QColor fill = i == m_selectedIndex ? QColor(255, 255, 255) : QColor(220, 240, 255, 150);
-        Theme::roundedBox(painter, rowRect, fill);
+        const QRectF button(panel.left() + 22.0 + i * 211.0, panel.top() + 18.0, 184.0, 42.0);
+        const bool selected = i == m_selectedIndex;
+        drawHardPanel(painter,
+                      button,
+                      selected ? QColor(255, 223, 95) : QColor(255, 252, 239),
+                      selected ? QColor(181, 74, 35) : QColor(161, 104, 70));
         Theme::text(painter,
-                    QRectF(rowRect.left() + 12.0, rowRect.top() + 4.0, 90.0, 24.0),
+                    QRectF(button.left() + 12.0, button.top() + 6.0, 76.0, 12.0),
                     labels.at(i),
-                    13,
+                    8,
                     true,
-                    QColor(73, 110, 145),
+                    QColor(105, 66, 42),
                     Qt::AlignLeft | Qt::AlignVCenter);
-
-        QString value;
-        if (i == 0) {
-            value = languageValue;
-        } else if (i == 1) {
-            value = difficultyValue;
-        } else if (i == 2) {
-            value = zh ? QStringLiteral("确认进入") : QStringLiteral("Confirm");
-        } else {
-            value = zh ? QStringLiteral("返回桌面") : QStringLiteral("Quit");
-        }
-
         Theme::text(painter,
-                    QRectF(rowRect.left() + 110.0, rowRect.top() + 4.0, 128.0, 24.0),
-                    value,
-                    12,
+                    QRectF(button.left() + 72.0, button.top() + 12.0, 96.0, 18.0),
+                    values.at(i),
+                    11,
                     true,
-                    QColor(52, 84, 115),
+                    QColor(66, 42, 30),
                     Qt::AlignRight | Qt::AlignVCenter);
     }
 
     Theme::text(painter,
-                QRectF(252.0, 372.0, 262.0, 24.0),
+                QRectF(panel.left() + 40.0, panel.bottom() - 24.0, panel.width() - 80.0, 14.0),
                 difficultyDescription(m_languageOption, m_difficultyOption),
-                10,
+                8,
                 true,
-                QColor(88, 130, 165));
+                QColor(104, 70, 48));
 }
 
 void MenuOverlayItem::drawBottomBar(QPainter *painter) const
 {
-    const bool zh = m_languageOption == ChineseLanguage;
-    Theme::roundedBox(painter, QRectF(40.0, 654.0, 724.0, 40.0), Theme::panelBlueDark());
+    const QRectF hint(372.0, 704.0, 462.0, 26.0);
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(QColor(80, 48, 34, 150));
+    painter->drawRoundedRect(hint, 5.0, 5.0);
     Theme::text(painter,
-                QRectF(56.0, 660.0, 214.0, 22.0),
-                zh ? QStringLiteral("W/S 选择项目") : QStringLiteral("W/S Select Row"),
-                12,
+                hint,
+                m_languageOption == ChineseLanguage
+                    ? QStringLiteral("W/S 选择   A/D 切换   Enter 确认   Esc 返回")
+                    : QStringLiteral("W/S Select   A/D Change   Enter Confirm   Esc Back"),
+                8,
                 true,
-                QColor(255, 255, 255));
-    Theme::text(painter,
-                QRectF(276.0, 660.0, 228.0, 22.0),
-                zh ? QStringLiteral("A/D 切换语言或难度") : QStringLiteral("A/D Change Option"),
-                12,
-                true,
-                QColor(255, 255, 255));
-    Theme::text(painter,
-                QRectF(512.0, 660.0, 120.0, 22.0),
-                zh ? QStringLiteral("Enter 确认") : QStringLiteral("Enter Confirm"),
-                12,
-                true,
-                QColor(255, 255, 255));
-    Theme::text(painter,
-                QRectF(636.0, 660.0, 104.0, 22.0),
-                zh ? QStringLiteral("Esc 退出") : QStringLiteral("Esc Quit"),
-                12,
-                true,
-                QColor(255, 255, 255));
+                QColor(255, 246, 226));
 }
 
-void MenuOverlayItem::drawBunting(QPainter *painter) const
+void MenuOverlayItem::drawBunting(QPainter *) const
 {
-    painter->setPen(QPen(QColor(230, 206, 154), 4.0));
-    painter->drawLine(QPointF(244.0, 538.0), QPointF(1144.0, 538.0));
-
-    const QColor colors[] = {
-        Theme::panelBlue(),
-        Theme::leafGreen(),
-        Theme::tomatoRed(),
-        QColor(250, 214, 102),
-        Theme::panelBlue()
-    };
-
-    qreal x = 300.0;
-    for (const QColor &color : colors) {
-        painter->setPen(Theme::outlinePen());
-        painter->setBrush(color);
-        QPolygonF triangle;
-        triangle << QPointF(x, 540.0) << QPointF(x + 28.0, 588.0) << QPointF(x + 56.0, 540.0);
-        painter->drawPolygon(triangle);
-        x += 148.0;
-    }
 }
 
-void MenuOverlayItem::drawDecorFood(QPainter *painter) const
+void MenuOverlayItem::drawDecorFood(QPainter *) const
 {
-    painter->setPen(Theme::outlinePen());
-    painter->setBrush(Theme::tomatoRed());
-    painter->drawEllipse(QRectF(92.0, 160.0, 58.0, 58.0));
-    painter->drawEllipse(QRectF(92.0, 572.0, 56.0, 56.0));
-
-    painter->setBrush(Theme::leafGreen());
-    painter->drawEllipse(QRectF(106.0, 150.0, 10.0, 10.0));
-    painter->drawEllipse(QRectF(120.0, 150.0, 10.0, 10.0));
-    painter->drawEllipse(QRectF(106.0, 562.0, 10.0, 10.0));
-    painter->drawEllipse(QRectF(120.0, 562.0, 10.0, 10.0));
-
-    painter->setBrush(QColor(255, 248, 232));
-    painter->drawEllipse(QRectF(94.0, 250.0, 54.0, 68.0));
-    painter->setBrush(QColor(247, 197, 76));
-    painter->drawEllipse(QRectF(114.0, 276.0, 14.0, 14.0));
 }
 
-void MenuOverlayItem::drawMascot(QPainter *painter) const
+void MenuOverlayItem::drawMascot(QPainter *) const
 {
-    painter->setPen(Theme::outlinePen());
-    painter->setBrush(QColor(255, 255, 255));
-    painter->drawEllipse(QRectF(642.0, 304.0, 90.0, 54.0));
-    painter->drawEllipse(QRectF(666.0, 280.0, 42.0, 32.0));
-    painter->setBrush(QColor(191, 140, 92));
-    painter->drawEllipse(QRectF(670.0, 346.0, 66.0, 56.0));
-    painter->drawEllipse(QRectF(658.0, 360.0, 16.0, 18.0));
-    painter->drawEllipse(QRectF(732.0, 360.0, 16.0, 18.0));
-    painter->setBrush(Theme::panelBlueDark());
-    painter->drawRoundedRect(QRectF(658.0, 382.0, 102.0, 38.0), 10.0, 10.0);
 }

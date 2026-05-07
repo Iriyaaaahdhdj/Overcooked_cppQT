@@ -38,6 +38,7 @@ public:
     void tick(const QSet<int> &pressedKeys, qreal deltaSeconds, const QRectF &playArea);
     const Controls &controls() const;
     void resetPosition(const QPointF &position);
+    void setFacing(Facing facing);
     QPointF facingVector() const;
     CarryItemType carriedItem() const;
     void setCarriedItem(CarryItemType item);

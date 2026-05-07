@@ -1,18 +1,48 @@
 #include "PlayerItem.h"
 
+#include <QCoreApplication>
+#include <QDir>
+#include <QImage>
 #include <QPainter>
 #include <QtMath>
 
 #include "GameTypes.h"
 #include "KitchenItem.h"
-#include "Theme.h"
+#include "PixelArt.h"
+
+namespace {
+bool isHelloKittyCharacter(const QColor &color)
+{
+    return color.red() >= color.blue();
+}
+
+QImage loadNearestSprite(const QString &fileName)
+{
+    const QString appDir = QCoreApplication::applicationDirPath();
+    const QStringList candidates = {
+        QDir(appDir).absoluteFilePath(QStringLiteral("../pixel_matrices/") + fileName),
+        QDir(appDir).absoluteFilePath(QStringLiteral("../../pixel_matrices/") + fileName),
+        QDir(appDir).absoluteFilePath(fileName),
+        QDir::current().absoluteFilePath(QStringLiteral("pixel_matrices/") + fileName)
+    };
+
+    for (const QString &path : candidates) {
+        QImage image(path);
+        if (!image.isNull()) {
+            return image;
+        }
+    }
+
+    return {};
+}
+}
 
 PlayerItem::PlayerItem(const QColor &coatColor,
                        const QColor &accentColor,
                        const Controls &controls,
                        QGraphicsItem *parent)
     : QGraphicsItem(parent)
-    , m_visualRect(-24.0, -68.0, 48.0, 102.0)
+    , m_visualRect(-60.0, -130.0, 120.0, 180.0)
     , m_collisionRect(-14.0, -2.0, 28.0, 30.0)
     , m_coatColor(coatColor)
     , m_accentColor(accentColor)
@@ -20,8 +50,8 @@ PlayerItem::PlayerItem(const QColor &coatColor,
     , m_facing(FaceDown)
     , m_carriedItem(NoItem)
 {
-    setZValue(30.0);
-    setCacheMode(QGraphicsItem::DeviceCoordinateCache);
+    setZValue(4.0);
+    setCacheMode(QGraphicsItem::NoCache);
     setAcceptedMouseButtons(Qt::NoButton);
 }
 
@@ -45,6 +75,16 @@ const PlayerItem::Controls &PlayerItem::controls() const
 void PlayerItem::resetPosition(const QPointF &position)
 {
     setPos(position);
+}
+
+void PlayerItem::setFacing(Facing facing)
+{
+    if (m_facing == facing) {
+        return;
+    }
+
+    m_facing = facing;
+    update();
 }
 
 QPointF PlayerItem::facingVector() const
@@ -108,7 +148,7 @@ void PlayerItem::tick(const QSet<int> &pressedKeys, qreal deltaSeconds, const QR
         return;
     }
 
-    const qreal speed = 158.0;
+    const qreal speed = 190.0;
     const qreal length = qSqrt(dx * dx + dy * dy);
     if (!qFuzzyIsNull(length)) {
         dx /= length;
@@ -146,10 +186,6 @@ bool PlayerItem::collidesWithBlockingItem() const
             continue;
         }
 
-        if (dynamic_cast<PlayerItem *>(item) != nullptr) {
-            return true;
-        }
-
         if (auto *kitchenItem = dynamic_cast<KitchenItem *>(item)) {
             if (kitchenItem->blocksMovement()) {
                 return true;
@@ -162,59 +198,106 @@ bool PlayerItem::collidesWithBlockingItem() const
 
 void PlayerItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *)
 {
-    painter->setRenderHint(QPainter::Antialiasing, true);
-    painter->setPen(Theme::outlinePen());
+    painter->setRenderHint(QPainter::Antialiasing, false);
+    painter->setRenderHint(QPainter::SmoothPixmapTransform, false);
+    const bool isHelloKitty = isHelloKittyCharacter(m_coatColor);
 
-    painter->setBrush(QColor(0, 0, 0, 30));
-    painter->drawEllipse(QRectF(-14.0, 24.0, 28.0, 10.0));
+    painter->fillRect(QRectF(-14.0, 25.0, 28.0, 4.0), QColor(0, 0, 0, 46));
 
-    painter->setBrush(QColor(255, 255, 255));
-    painter->drawEllipse(QRectF(-16.0, -34.0, 32.0, 18.0));
-    painter->drawEllipse(QRectF(-10.0, -42.0, 20.0, 16.0));
-    painter->setBrush(QColor(210, 236, 255));
-    painter->drawRoundedRect(QRectF(-14.0, -24.0, 28.0, 7.0), 3.0, 3.0);
+    if (!isHelloKitty) {
+        static const QImage cinnamorollSprite = loadNearestSprite(
+            QStringLiteral("cinnamoroll_candidate_65x72_transparent.png"));
+        if (!cinnamorollSprite.isNull()) {
+            const qreal scale = 1.28;
+            const QSizeF spriteSize(cinnamorollSprite.width() * scale,
+                                    cinnamorollSprite.height() * scale);
+            const QRectF targetRect(-spriteSize.width() / 2.0,
+                                    -spriteSize.height() + 28.0,
+                                    spriteSize.width(),
+                                    spriteSize.height());
+            painter->drawImage(targetRect, cinnamorollSprite);
+        } else {
+            const QStringList sprite = PixelArt::cinnamorollChefSprite();
+            const PixelArt::Palette palette = PixelArt::cinnamorollPalette();
+            int maxColumns = 1;
+            for (const QString &row : sprite) {
+                if (row.size() > maxColumns) {
+                    maxColumns = row.size();
+                }
+            }
+            const qreal pixelSize = 0.82;
+            const qreal spriteWidth = maxColumns * pixelSize;
+            const qreal spriteHeight = sprite.size() * pixelSize;
+            PixelArt::drawSprite(painter,
+                                 sprite,
+                                 palette,
+                                 QPointF(-spriteWidth / 2.0, -spriteHeight + 26.0),
+                                 pixelSize);
+        }
+    } else {
+        static const QImage helloKittySprite = loadNearestSprite(
+            QStringLiteral("kitty_from_new_png_sprite_masked_v2.png"));
+        if (!helloKittySprite.isNull()) {
+            const qreal scale = 0.78;
+            const QSizeF spriteSize(helloKittySprite.width() * scale,
+                                    helloKittySprite.height() * scale);
+            const QRectF targetRect(-spriteSize.width() / 2.0,
+                                    -spriteSize.height() + 28.0,
+                                    spriteSize.width(),
+                                    spriteSize.height());
+            painter->drawImage(targetRect, helloKittySprite);
+        } else {
+            const QStringList sprite = PixelArt::helloKittyChefSprite();
+            const PixelArt::Palette palette = PixelArt::helloKittyPalette();
+            int maxColumns = 1;
+            for (const QString &row : sprite) {
+                if (row.size() > maxColumns) {
+                    maxColumns = row.size();
+                }
+            }
+            const qreal pixelSize = 1.35;
+            const qreal spriteWidth = maxColumns * pixelSize;
+            const qreal spriteHeight = sprite.size() * pixelSize;
+            PixelArt::drawSprite(painter,
+                                 sprite,
+                                 palette,
+                                 QPointF(-spriteWidth / 2.0, -spriteHeight + 26.0),
+                                 pixelSize);
+        }
+    }
 
-    painter->setBrush(QColor(255, 224, 189));
-    painter->drawEllipse(QRectF(-15.0, -27.0, 30.0, 24.0));
+    if (m_carriedItem != NoItem) {
+        const QRectF plateRect(-24.0, -22.0, 48.0, 24.0);
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(QColor(0, 0, 0, 42));
+        painter->drawEllipse(plateRect.translated(0.0, 4.0));
 
-    painter->setBrush(m_coatColor);
-    painter->drawRoundedRect(QRectF(-17.0, -3.0, 34.0, 26.0), 10.0, 10.0);
-    painter->setBrush(QColor(245, 245, 245));
-    painter->drawRoundedRect(QRectF(-11.0, 0.0, 22.0, 18.0), 5.0, 5.0);
-    painter->setBrush(m_accentColor);
-    painter->drawRoundedRect(QRectF(-7.0, 4.0, 14.0, 9.0), 4.0, 4.0);
-    painter->drawEllipse(QRectF(-1.5, 0.5, 3.0, 3.0));
-    painter->drawEllipse(QRectF(-1.5, 6.5, 3.0, 3.0));
-    painter->drawEllipse(QRectF(-1.5, 12.5, 3.0, 3.0));
+        painter->setBrush(isHelloKitty ? QColor(255, 246, 248) : QColor(250, 252, 255));
+        painter->drawEllipse(QRectF(-31.0, -21.0, 13.0, 17.0));
+        painter->drawEllipse(QRectF(18.0, -21.0, 13.0, 17.0));
 
-    painter->setBrush(QColor(255, 224, 189));
-    painter->drawEllipse(QRectF(-20.0, -6.0, 8.0, 13.0));
-    painter->drawEllipse(QRectF(12.0, -6.0, 8.0, 13.0));
+        if (isPlateCarrierItem(m_carriedItem)) {
+            drawCarryItemIcon(painter, m_carriedItem, QRectF(-25.0, -30.0, 50.0, 42.0));
+        } else {
+            painter->setBrush(QColor(255, 252, 244));
+            painter->drawEllipse(plateRect);
+            painter->setBrush(QColor(226, 236, 246));
+            painter->drawEllipse(plateRect.adjusted(8.0, 5.0, -8.0, -5.0));
+            drawCarryItemIcon(painter, m_carriedItem, QRectF(-17.0, -28.0, 34.0, 34.0));
+        }
+    }
 
-    painter->setBrush(QColor(255, 255, 255));
-    painter->drawEllipse(QRectF(-9.0, -18.0, 4.0, 4.0));
-    painter->drawEllipse(QRectF(5.0, -18.0, 4.0, 4.0));
-
-    painter->setBrush(QColor(255, 181, 195));
-    painter->drawEllipse(QRectF(-13.0, -12.0, 5.0, 4.0));
-    painter->drawEllipse(QRectF(8.0, -12.0, 5.0, 4.0));
-
-    painter->setBrush(m_coatColor.darker(105));
-    painter->drawRoundedRect(QRectF(-12.0, 23.0, 9.0, 8.0), 4.0, 4.0);
-    painter->drawRoundedRect(QRectF(3.0, 23.0, 9.0, 8.0), 4.0, 4.0);
-
-    painter->setBrush(Qt::black);
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(QColor(54, 42, 74));
     QPointF indicator(0.0, 0.0);
     if (m_facing == FaceUp) {
         indicator = QPointF(0.0, -22.0);
     } else if (m_facing == FaceDown) {
-        indicator = QPointF(0.0, 18.0);
+        indicator = QPointF(0.0, 16.0);
     } else if (m_facing == FaceLeft) {
-        indicator = QPointF(-18.0, 0.0);
+        indicator = QPointF(-18.0, -4.0);
     } else {
-        indicator = QPointF(18.0, 0.0);
+        indicator = QPointF(18.0, -4.0);
     }
-    painter->drawEllipse(QRectF(indicator.x() - 2.0, indicator.y() - 2.0, 4.0, 4.0));
-
-    drawCarryItemIcon(painter, m_carriedItem, QRectF(-11.0, -67.0, 22.0, 22.0));
+    painter->drawRect(QRectF(indicator.x() - 2.0, indicator.y() - 2.0, 4.0, 4.0));
 }

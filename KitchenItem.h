@@ -17,10 +17,14 @@ public:
         TomatoStationKind,
         EggStationKind,
         PlateStationKind,
+        CleanPlateStationKind,
+        SinkStationKind,
+        DirtyPlateStationKind,
         CounterKind
     };
 
     KitchenItem(Kind kind, int gridX, int gridY, int gridWidth, int gridHeight, QGraphicsItem *parent = nullptr);
+    KitchenItem(Kind kind, const QRectF &sceneRect, QGraphicsItem *parent = nullptr);
 
     QRectF boundingRect() const override;
     QPainterPath shape() const override;
@@ -30,6 +34,9 @@ public:
     bool blocksMovement() const;
     CarryItemType storedItem() const;
     void setStoredItem(CarryItemType item);
+    QPointF storedItemSceneCenter() const;
+    void setStoredItemSceneCenter(const QPointF &sceneCenter);
+    void clearStoredItemSceneCenter();
     int storedCount() const;
     void setStoredCount(int count);
     qreal stationProgress() const;
@@ -38,6 +45,8 @@ public:
     void setSoupReady(bool ready);
     void tick(qreal deltaSeconds, bool allowBurning);
     void resetState();
+    int gridX() const;
+    int gridY() const;
     int tomatoCount() const;
     void setTomatoCount(int count);
     int eggCount() const;
@@ -66,12 +75,17 @@ private:
 
     Kind m_kind;
     QRectF m_rect;
+    int m_gridX;
+    int m_gridY;
     CarryItemType m_storedItem;
+    QPointF m_storedItemLocalCenter;
+    bool m_hasStoredItemLocalCenter;
     int m_storedCount;
     int m_tomatoCount;
     int m_eggCount;
     qreal m_stationProgress;
     qreal m_burnProgress;
+    qreal m_animTime;
     bool m_soupReady;
     bool m_isBurnt;
 };

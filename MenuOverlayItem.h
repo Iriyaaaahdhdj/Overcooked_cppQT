@@ -22,6 +22,7 @@ public:
 
     QRectF boundingRect() const override;
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
+    void advanceAnimation(qreal deltaSeconds);
 
     void setSelectedIndex(int index);
     int selectedIndex() const;
@@ -44,4 +45,5 @@ private:
     int m_selectedIndex;
     int m_languageOption;
     int m_difficultyOption;
+    qreal m_animationTime;
 };

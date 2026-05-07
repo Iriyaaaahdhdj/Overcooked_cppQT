@@ -11,7 +11,7 @@
 namespace {
 void drawArrow(QPainter *painter, const QPointF &from, const QPointF &to)
 {
-    painter->setPen(QPen(QColor(245, 245, 245), 5.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    painter->setPen(QPen(QColor(255, 249, 230), 5.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
     painter->drawLine(from, to);
 
     const QPointF direction = to - from;
@@ -23,13 +23,80 @@ void drawArrow(QPainter *painter, const QPointF &from, const QPointF &to)
     const QPointF unit(direction.x() / length, direction.y() / length);
     const QPointF normal(-unit.y(), unit.x());
     const QPointF tip = to;
-    const QPointF left = tip - unit * 18.0 + normal * 10.0;
-    const QPointF right = tip - unit * 18.0 - normal * 10.0;
-
-    painter->setBrush(QColor(245, 245, 245));
     QPolygonF head;
-    head << tip << left << right;
+    head << tip << tip - unit * 18.0 + normal * 10.0 << tip - unit * 18.0 - normal * 10.0;
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(QColor(255, 249, 230));
     painter->drawPolygon(head);
+}
+
+void drawIconCard(QPainter *painter, const QRectF &rect, const QString &step, const QString &label, const QColor &accent)
+{
+    painter->setPen(QPen(QColor(86, 66, 90), 2.0));
+    painter->setBrush(QColor(255, 248, 252));
+    painter->drawRoundedRect(rect, 18.0, 18.0);
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(QColor(255, 255, 255, 170));
+    painter->drawRoundedRect(rect.adjusted(10.0, 10.0, -10.0, -70.0), 14.0, 14.0);
+    painter->setBrush(accent);
+    painter->drawRoundedRect(QRectF(rect.left() + 18.0, rect.bottom() - 20.0, rect.width() - 36.0, 8.0), 4.0, 4.0);
+    Theme::text(painter, QRectF(rect.left() + 8.0, rect.bottom() - 62.0, rect.width() - 16.0, 20.0), step, 10, true, QColor(131, 86, 110));
+    Theme::text(painter, QRectF(rect.left() + 8.0, rect.bottom() - 42.0, rect.width() - 16.0, 20.0), label, 11, true, QColor(63, 48, 75));
+}
+
+void drawRiceBowl(QPainter *painter, const QRectF &rect, bool cooked)
+{
+    const QRectF bowl(rect.left() + 26.0, rect.top() + 34.0, rect.width() - 52.0, 50.0);
+    painter->setPen(QPen(QColor(58, 46, 78), 2.0));
+    painter->setBrush(cooked ? QColor(255, 255, 252) : QColor(234, 226, 206));
+    painter->drawEllipse(bowl.adjusted(0.0, -14.0, 0.0, 8.0));
+    painter->setBrush(QColor(162, 116, 82));
+    painter->drawRoundedRect(QRectF(bowl.left() + 8.0, bowl.top() + 34.0, bowl.width() - 16.0, 20.0), 8.0, 8.0);
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(QColor(255, 255, 255, 170));
+    painter->drawEllipse(QRectF(bowl.left() + 18.0, bowl.top() - 3.0, 13.0, 9.0));
+    painter->drawEllipse(QRectF(bowl.left() + 38.0, bowl.top() - 6.0, 13.0, 9.0));
+    if (cooked) {
+        painter->setPen(QPen(QColor(255, 255, 255, 190), 2.0));
+        painter->drawArc(QRectF(rect.left() + 42.0, rect.top() + 10.0, 20.0, 30.0), 30 * 16, 120 * 16);
+        painter->drawArc(QRectF(rect.left() + 70.0, rect.top() + 8.0, 20.0, 32.0), 30 * 16, 120 * 16);
+    }
+}
+
+void drawPot(QPainter *painter, const QRectF &rect)
+{
+    painter->setPen(QPen(QColor(58, 46, 78), 2.0));
+    painter->setBrush(QColor(112, 122, 130));
+    painter->drawEllipse(QRectF(rect.left() + 32.0, rect.top() + 28.0, rect.width() - 64.0, 24.0));
+    painter->drawRoundedRect(QRectF(rect.left() + 36.0, rect.top() + 40.0, rect.width() - 72.0, 40.0), 8.0, 8.0);
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(QColor(255, 111, 68));
+    painter->drawRect(QRectF(rect.left() + 44.0, rect.top() + 74.0, 14.0, 19.0));
+    painter->setBrush(QColor(255, 218, 82));
+    painter->drawRect(QRectF(rect.left() + 68.0, rect.top() + 70.0, 15.0, 23.0));
+}
+
+void drawCuttingBoard(QPainter *painter, const QRectF &rect)
+{
+    painter->setPen(QPen(QColor(98, 70, 52), 2.0));
+    painter->setBrush(QColor(255, 224, 188));
+    painter->drawRoundedRect(rect.adjusted(24.0, 20.0, -24.0, -40.0), 12.0, 12.0);
+    drawCarryItemIcon(painter, CucumberItem, QRectF(rect.left() + 38.0, rect.top() + 34.0, 34.0, 34.0));
+    drawCarryItemIcon(painter, ShrimpItem, QRectF(rect.left() + 70.0, rect.top() + 34.0, 34.0, 34.0));
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(QColor(238, 238, 232));
+    painter->drawRect(QRectF(rect.left() + 78.0, rect.top() + 22.0, 28.0, 8.0));
+    painter->setBrush(QColor(90, 62, 44));
+    painter->drawRect(QRectF(rect.left() + 102.0, rect.top() + 22.0, 6.0, 28.0));
+}
+
+void drawSushiPlate(QPainter *painter, const QRectF &rect)
+{
+    painter->setPen(QPen(QColor(58, 46, 78), 2.0));
+    painter->setBrush(QColor(255, 255, 255));
+    painter->drawEllipse(rect.adjusted(22.0, 36.0, -22.0, -44.0));
+    drawCarryItemIcon(painter, CucumberRollItem, QRectF(rect.left() + 34.0, rect.top() + 38.0, 30.0, 30.0));
+    drawCarryItemIcon(painter, ShrimpRollItem, QRectF(rect.left() + 70.0, rect.top() + 38.0, 30.0, 30.0));
 }
 }
 
@@ -54,7 +121,6 @@ void TutorialOverlayItem::setLanguageChinese(bool chinese)
     if (m_chinese == chinese) {
         return;
     }
-
     m_chinese = chinese;
     update();
 }
@@ -64,7 +130,6 @@ void TutorialOverlayItem::setDifficultyMode(int difficultyMode)
     if (m_difficultyMode == difficultyMode) {
         return;
     }
-
     m_difficultyMode = difficultyMode;
     update();
 }
@@ -72,8 +137,7 @@ void TutorialOverlayItem::setDifficultyMode(int difficultyMode)
 void TutorialOverlayItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *)
 {
     painter->setRenderHint(QPainter::Antialiasing, true);
-
-    painter->fillRect(m_rect, QColor(0, 0, 0, 158));
+    painter->fillRect(m_rect, QColor(0, 0, 0, 142));
     drawBoard(painter);
     drawRecipeFlow(painter);
     drawFooter(painter);
@@ -81,151 +145,124 @@ void TutorialOverlayItem::paint(QPainter *painter, const QStyleOptionGraphicsIte
 
 void TutorialOverlayItem::drawBoard(QPainter *painter) const
 {
-    const QRectF frame(90.0, 58.0, m_rect.width() - 180.0, m_rect.height() - 116.0);
-    painter->setPen(QPen(QColor(82, 52, 24), 10.0));
-    painter->setBrush(QColor(30, 31, 33));
-    painter->drawRoundedRect(frame, 10.0, 10.0);
+    const QRectF frame(72.0, 44.0, m_rect.width() - 144.0, m_rect.height() - 88.0);
+    QLinearGradient boardGradient(frame.topLeft(), frame.bottomLeft());
+    boardGradient.setColorAt(0.0, QColor(48, 43, 50));
+    boardGradient.setColorAt(1.0, QColor(30, 31, 36));
+
+    painter->setPen(QPen(QColor(126, 84, 45), 8.0));
+    painter->setBrush(boardGradient);
+    painter->drawRoundedRect(frame, 18.0, 18.0);
 
     Theme::text(painter,
-                QRectF(frame.left() + 60.0, frame.top() + 28.0, frame.width() - 120.0, 54.0),
-                m_chinese ? QStringLiteral("番茄鸡蛋汤教学") : QStringLiteral("Tomato Egg Soup Tutorial"),
+                QRectF(frame.left() + 56.0, frame.top() + 18.0, frame.width() - 112.0, 40.0),
+                m_chinese ? QStringLiteral("寿司制作流程") : QStringLiteral("Sushi Making Flow"),
                 24,
                 true,
-                QColor(250, 248, 243));
+                QColor(255, 248, 235));
 
-    painter->setPen(QPen(QColor(238, 238, 238, 180), 4.0, Qt::SolidLine, Qt::RoundCap));
-    painter->drawLine(QPointF(frame.left() + 140.0, frame.top() + 102.0),
-                      QPointF(frame.right() - 140.0, frame.top() + 102.0));
+    Theme::text(painter,
+                QRectF(frame.left() + 96.0, frame.top() + 62.0, frame.width() - 192.0, 24.0),
+                m_chinese ? QStringLiteral("目标：分工协作，持续完成黄瓜卷或虾寿司并送到出餐口。")
+                          : QStringLiteral("Goal: cooperate, make cucumber rolls or shrimp sushi, then serve them."),
+                12,
+                true,
+                QColor(230, 220, 208));
 }
 
 void TutorialOverlayItem::drawRecipeFlow(QPainter *painter) const
 {
-    const QRectF icon1(170.0, 232.0, 120.0, 120.0);
-    const QRectF icon2(378.0, 232.0, 120.0, 120.0);
-    const QRectF icon3(586.0, 232.0, 120.0, 120.0);
-    const QRectF icon4(794.0, 232.0, 120.0, 120.0);
-    const QRectF icon5(1002.0, 232.0, 120.0, 120.0);
+    const QRectF cards[] = {
+        QRectF(112.0, 142.0, 138.0, 138.0),
+        QRectF(302.0, 142.0, 138.0, 138.0),
+        QRectF(492.0, 142.0, 138.0, 138.0),
+        QRectF(682.0, 142.0, 138.0, 138.0),
+        QRectF(872.0, 142.0, 138.0, 138.0)
+    };
 
-    painter->setPen(QPen(QColor(238, 238, 238), 3.0));
-    painter->setBrush(QColor(74, 54, 45));
-    painter->drawRoundedRect(icon1, 18.0, 18.0);
-    painter->setBrush(QColor(255, 255, 255));
-    painter->drawRoundedRect(icon1.adjusted(14.0, 18.0, -14.0, -18.0), 12.0, 12.0);
-    painter->setBrush(QColor(217, 81, 65));
-    painter->drawEllipse(icon1.adjusted(26.0, 30.0, -56.0, -56.0));
-    painter->drawEllipse(icon1.adjusted(54.0, 30.0, -28.0, -56.0));
-    painter->drawEllipse(icon1.adjusted(40.0, 56.0, -42.0, -30.0));
-    painter->setBrush(Theme::leafGreen());
-    painter->drawEllipse(QRectF(icon1.left() + 46.0, icon1.top() + 30.0, 12.0, 12.0));
-    painter->drawEllipse(QRectF(icon1.left() + 74.0, icon1.top() + 30.0, 12.0, 12.0));
+    const QString labelsZh[] = {
+        QStringLiteral("取生米"),
+        QStringLiteral("放锅煮饭"),
+        QStringLiteral("取海苔"),
+        QStringLiteral("切黄瓜/虾"),
+        QStringLiteral("组合并出餐")
+    };
+    const QString labelsEn[] = {
+        QStringLiteral("Pick Rice"),
+        QStringLiteral("Cook Rice"),
+        QStringLiteral("Pick Nori"),
+        QStringLiteral("Chop Filling"),
+        QStringLiteral("Assemble & Serve")
+    };
+    const QColor accents[] = {
+        QColor(244, 198, 126),
+        QColor(255, 121, 75),
+        QColor(80, 146, 98),
+        QColor(239, 149, 172),
+        QColor(130, 203, 238)
+    };
 
-    painter->setBrush(QColor(255, 232, 196));
-    painter->drawRoundedRect(icon2, 18.0, 18.0);
-    painter->setBrush(QColor(254, 248, 233));
-    painter->drawRoundedRect(icon2.adjusted(16.0, 18.0, -16.0, -32.0), 12.0, 12.0);
-    painter->setBrush(QColor(136, 110, 82));
-    painter->drawRoundedRect(QRectF(icon2.left() + 24.0, icon2.top() + 84.0, 72.0, 18.0), 8.0, 8.0);
-    painter->setBrush(QColor(217, 81, 65));
-    painter->drawRoundedRect(QRectF(icon2.left() + 36.0, icon2.top() + 46.0, 18.0, 18.0), 4.0, 4.0);
-    painter->drawRoundedRect(QRectF(icon2.left() + 58.0, icon2.top() + 42.0, 18.0, 18.0), 4.0, 4.0);
-    painter->drawRoundedRect(QRectF(icon2.left() + 48.0, icon2.top() + 64.0, 18.0, 18.0), 4.0, 4.0);
+    for (int i = 0; i < 5; ++i) {
+        const QString step = m_chinese
+                                 ? QStringLiteral("步骤 %1").arg(i + 1)
+                                 : QStringLiteral("Step %1").arg(i + 1);
+        drawIconCard(painter, cards[i], step, m_chinese ? labelsZh[i] : labelsEn[i], accents[i]);
+    }
 
-    painter->setBrush(QColor(176, 126, 84));
-    painter->drawRoundedRect(icon3, 18.0, 18.0);
-    painter->setBrush(QColor(255, 248, 231));
-    painter->drawEllipse(QRectF(icon3.left() + 22.0, icon3.top() + 26.0, 30.0, 40.0));
-    painter->drawEllipse(QRectF(icon3.left() + 50.0, icon3.top() + 26.0, 30.0, 40.0));
-    painter->setBrush(QColor(247, 197, 76));
-    painter->drawEllipse(QRectF(icon3.left() + 33.0, icon3.top() + 41.0, 8.0, 8.0));
-    painter->drawEllipse(QRectF(icon3.left() + 61.0, icon3.top() + 41.0, 8.0, 8.0));
-    Theme::text(painter,
-                QRectF(icon3.left() + 10.0, icon3.top() + 82.0, 100.0, 18.0),
-                QStringLiteral("1x"),
-                18,
-                true,
-                QColor(255, 244, 204));
+    drawRiceBowl(painter, cards[0], false);
+    drawPot(painter, cards[1]);
+    drawCarryItemIcon(painter, NoriItem, cards[2].adjusted(42.0, 34.0, -42.0, -52.0));
+    drawCuttingBoard(painter, cards[3]);
+    drawSushiPlate(painter, cards[4]);
 
-    painter->setBrush(QColor(100, 105, 115));
-    painter->drawRoundedRect(icon4, 18.0, 18.0);
-    painter->setBrush(QColor(212, 222, 232));
-    painter->drawRoundedRect(icon4.adjusted(18.0, 22.0, -18.0, -36.0), 16.0, 16.0);
-    painter->setBrush(QColor(72, 74, 80));
-    painter->drawEllipse(QRectF(icon4.left() + 24.0, icon4.top() + 24.0, 72.0, 56.0));
-    painter->setBrush(QColor(217, 81, 65));
-    painter->drawRoundedRect(QRectF(icon4.left() + 30.0, icon4.top() + 42.0, 14.0, 14.0), 3.0, 3.0);
-    painter->drawRoundedRect(QRectF(icon4.left() + 48.0, icon4.top() + 34.0, 14.0, 14.0), 3.0, 3.0);
-    painter->setBrush(QColor(255, 248, 231));
-    painter->drawEllipse(QRectF(icon4.left() + 64.0, icon4.top() + 40.0, 16.0, 20.0));
-    painter->setBrush(QColor(247, 197, 76));
-    painter->drawEllipse(QRectF(icon4.left() + 69.0, icon4.top() + 47.0, 6.0, 6.0));
+    for (int i = 0; i < 4; ++i) {
+        drawArrow(painter,
+                  QPointF(cards[i].right() + 18.0, cards[i].center().y() - 10.0),
+                  QPointF(cards[i + 1].left() - 18.0, cards[i + 1].center().y() - 10.0));
+    }
 
-    painter->setBrush(QColor(255, 238, 160));
-    painter->drawRoundedRect(icon5, 18.0, 18.0);
-    painter->setBrush(QColor(255, 255, 255));
-    painter->drawRoundedRect(icon5.adjusted(22.0, 24.0, -22.0, -42.0), 12.0, 12.0);
-    painter->setBrush(QColor(255, 194, 101));
-    painter->drawEllipse(QRectF(icon5.left() + 40.0, icon5.top() + 38.0, 40.0, 40.0));
-    Theme::text(painter,
-                QRectF(icon5.left() + 14.0, icon5.top() + 86.0, 92.0, 18.0),
-                QStringLiteral("+20"),
-                16,
-                true,
-                QColor(98, 62, 24));
+    const QRectF recipeBox(142.0, 336.0, 922.0, 148.0);
+    painter->setPen(QPen(QColor(255, 240, 210), 2.0));
+    painter->setBrush(QColor(80, 60, 50, 198));
+    painter->drawRoundedRect(recipeBox, 16.0, 16.0);
 
-    drawArrow(painter, QPointF(icon1.right() + 16.0, icon1.center().y()), QPointF(icon2.left() - 16.0, icon2.center().y()));
-    drawArrow(painter, QPointF(icon2.right() + 16.0, icon2.center().y()), QPointF(icon3.left() - 16.0, icon3.center().y()));
-    drawArrow(painter, QPointF(icon3.right() + 16.0, icon3.center().y()), QPointF(icon4.left() - 16.0, icon4.center().y()));
-    drawArrow(painter, QPointF(icon4.right() + 16.0, icon4.center().y()), QPointF(icon5.left() - 16.0, icon5.center().y()));
-
-    Theme::text(painter, QRectF(icon1.left() - 14.0, 372.0, 148.0, 24.0), m_chinese ? QStringLiteral("1. 取番茄") : QStringLiteral("1. Pick Tomato"), 13, true, QColor(248, 248, 248));
-    Theme::text(painter, QRectF(icon2.left() - 14.0, 372.0, 148.0, 24.0), m_chinese ? QStringLiteral("2. 切番茄") : QStringLiteral("2. Chop Tomato"), 13, true, QColor(248, 248, 248));
-    Theme::text(painter, QRectF(icon3.left() - 14.0, 372.0, 148.0, 24.0), m_chinese ? QStringLiteral("3. 取鸡蛋") : QStringLiteral("3. Pick Egg"), 13, true, QColor(248, 248, 248));
-    Theme::text(painter, QRectF(icon4.left() - 14.0, 372.0, 148.0, 24.0), m_chinese ? QStringLiteral("4. 锅里放 2 番茄 1 鸡蛋") : QStringLiteral("4. Pot: 2 Tomato + 1 Egg"), 11, true, QColor(248, 248, 248));
-    Theme::text(painter, QRectF(icon5.left() - 14.0, 372.0, 148.0, 24.0), m_chinese ? QStringLiteral("5. 出餐") : QStringLiteral("5. Deliver"), 13, true, QColor(248, 248, 248));
-
-    Theme::text(painter,
-                QRectF(174.0, 446.0, 932.0, 28.0),
-                m_chinese ? QStringLiteral("目标：完成本局要求的番茄鸡蛋汤出餐数量。")
-                          : QStringLiteral("Goal: Deliver the required number of tomato egg soups."),
-                17,
-                true,
-                QColor(255, 247, 214));
+    const QString line1 = m_chinese
+                              ? QStringLiteral("配方 1：海苔 + 熟米饭 = 寿司底")
+                              : QStringLiteral("Recipe 1: Nori + cooked rice = sushi base");
+    const QString line2 = m_chinese
+                              ? QStringLiteral("配方 2：寿司底 + 切好的黄瓜 = 黄瓜卷；寿司底 + 切好的虾 = 虾寿司")
+                              : QStringLiteral("Recipe 2: base + chopped cucumber = cucumber roll; base + chopped shrimp = shrimp sushi");
+    Theme::text(painter, QRectF(recipeBox.left() + 32.0, recipeBox.top() + 26.0, recipeBox.width() - 64.0, 24.0), line1, 15, true, QColor(255, 246, 222));
+    Theme::text(painter, QRectF(recipeBox.left() + 32.0, recipeBox.top() + 62.0, recipeBox.width() - 64.0, 24.0), line2, 14, true, QColor(255, 246, 222));
 
     QString difficultyTip;
     if (m_chinese) {
         if (m_difficultyMode == 0) {
-            difficultyTip = QStringLiteral("难度 1：无限时，专注协作分工。");
+            difficultyTip = QStringLiteral("难度 1：无限时，先熟悉路线和分工。");
         } else if (m_difficultyMode == 1) {
-            difficultyTip = QStringLiteral("难度 2：有限时，需要更快配合。");
+            difficultyTip = QStringLiteral("难度 2：有限时，尽量提高出餐数量和分数。");
         } else {
-            difficultyTip = QStringLiteral("难度 3：熟汤放太久会糊锅，记得及时装盘。");
+            difficultyTip = QStringLiteral("难度 3：有限时且锅会糊，米饭熟了要及时取走。");
         }
+    } else if (m_difficultyMode == 0) {
+        difficultyTip = QStringLiteral("Difficulty 1: untimed, learn the route and teamwork.");
+    } else if (m_difficultyMode == 1) {
+        difficultyTip = QStringLiteral("Difficulty 2: timed, serve more sushi for a higher score.");
     } else {
-        if (m_difficultyMode == 0) {
-            difficultyTip = QStringLiteral("Difficulty 1: untimed co-op with a delivery goal.");
-        } else if (m_difficultyMode == 1) {
-            difficultyTip = QStringLiteral("Difficulty 2: timed round with a delivery goal.");
-        } else {
-            difficultyTip = QStringLiteral("Difficulty 3: ready soup can burn if ignored.");
-        }
+        difficultyTip = QStringLiteral("Difficulty 3: timed with burning pots. Grab cooked rice quickly.");
     }
 
-    Theme::text(painter,
-                QRectF(174.0, 486.0, 932.0, 24.0),
-                difficultyTip,
-                12,
-                true,
-                QColor(224, 224, 224));
+    Theme::text(painter, QRectF(recipeBox.left() + 32.0, recipeBox.top() + 104.0, recipeBox.width() - 64.0, 24.0), difficultyTip, 13, true, QColor(231, 222, 212));
 }
 
 void TutorialOverlayItem::drawFooter(QPainter *painter) const
 {
-    Theme::roundedBox(painter, QRectF(424.0, 592.0, 432.0, 52.0), QColor(56, 125, 182));
+    Theme::roundedBox(painter, QRectF(386.0, 594.0, 434.0, 50.0), QColor(65, 128, 177));
     Theme::text(painter,
-                QRectF(442.0, 606.0, 396.0, 24.0),
+                QRectF(408.0, 608.0, 390.0, 22.0),
                 m_chinese ? QStringLiteral("按 Enter / Space / F / / 开始")
                           : QStringLiteral("Press Enter / Space / F / / to begin"),
-                16,
+                14,
                 true,
                 QColor(255, 255, 255));
 }

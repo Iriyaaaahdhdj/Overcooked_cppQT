@@ -1,27 +1,18 @@
 #include "KitchenItem.h"
 
+#include <cmath>
 #include <QColor>
 #include <QPainter>
 #include <QPen>
 
 #include "GameTypes.h"
-#include "Theme.h"
 
 namespace {
-QPen outlinePen()
+QPen pixelPen()
 {
-    QPen pen(Qt::black, 1.0);
+    QPen pen(QColor(58, 46, 78), 1.0);
     pen.setCosmetic(true);
-    pen.setJoinStyle(Qt::RoundJoin);
-    pen.setCapStyle(Qt::RoundCap);
     return pen;
-}
-
-void drawRoundedRect(QPainter *painter, const QRectF &rect, const QColor &fillColor)
-{
-    painter->setPen(outlinePen());
-    painter->setBrush(fillColor);
-    painter->drawRoundedRect(rect, KitchenItem::CornerRadius, KitchenItem::CornerRadius);
 }
 }
 
@@ -29,18 +20,47 @@ KitchenItem::KitchenItem(Kind kind, int gridX, int gridY, int gridWidth, int gri
     : QGraphicsItem(parent)
     , m_kind(kind)
     , m_rect(0.0, 0.0, gridWidth * GridSize, gridHeight * GridSize)
+    , m_gridX(gridX)
+    , m_gridY(gridY)
     , m_storedItem(NoItem)
+    , m_storedItemLocalCenter(m_rect.center())
+    , m_hasStoredItemLocalCenter(false)
     , m_storedCount(0)
     , m_tomatoCount(0)
     , m_eggCount(0)
     , m_stationProgress(0.0)
     , m_burnProgress(0.0)
+    , m_animTime(0.0)
     , m_soupReady(false)
     , m_isBurnt(false)
 {
     setPos(gridX * GridSize, gridY * GridSize);
     setZValue(kind == FloorTileKind ? 0.0 : 10.0);
     setCacheMode(QGraphicsItem::DeviceCoordinateCache);
+    setAcceptedMouseButtons(Qt::NoButton);
+}
+
+KitchenItem::KitchenItem(Kind kind, const QRectF &sceneRect, QGraphicsItem *parent)
+    : QGraphicsItem(parent)
+    , m_kind(kind)
+    , m_rect(0.0, 0.0, sceneRect.width(), sceneRect.height())
+    , m_gridX(static_cast<int>(sceneRect.x()) / GridSize)
+    , m_gridY(static_cast<int>(sceneRect.y()) / GridSize)
+    , m_storedItem(NoItem)
+    , m_storedItemLocalCenter(m_rect.center())
+    , m_hasStoredItemLocalCenter(false)
+    , m_storedCount(0)
+    , m_tomatoCount(0)
+    , m_eggCount(0)
+    , m_stationProgress(0.0)
+    , m_burnProgress(0.0)
+    , m_animTime(0.0)
+    , m_soupReady(false)
+    , m_isBurnt(false)
+{
+    setPos(sceneRect.topLeft());
+    setZValue(kind == FloorTileKind ? 0.0 : 2.0);
+    setCacheMode(QGraphicsItem::NoCache);
     setAcceptedMouseButtons(Qt::NoButton);
 }
 
@@ -52,7 +72,7 @@ QRectF KitchenItem::boundingRect() const
 QPainterPath KitchenItem::shape() const
 {
     QPainterPath path;
-    path.addRoundedRect(m_rect, CornerRadius, CornerRadius);
+    path.addRect(m_rect);
     return path;
 }
 
@@ -63,7 +83,7 @@ KitchenItem::Kind KitchenItem::itemKind() const
 
 bool KitchenItem::blocksMovement() const
 {
-    return m_kind != FloorTileKind;
+    return m_kind == BoundaryWallKind;
 }
 
 CarryItemType KitchenItem::storedItem() const
@@ -76,8 +96,30 @@ void KitchenItem::setStoredItem(CarryItemType item)
     if (m_storedItem == item) {
         return;
     }
-
     m_storedItem = item;
+    if (m_storedItem == NoItem) {
+        clearStoredItemSceneCenter();
+    }
+    update();
+}
+
+QPointF KitchenItem::storedItemSceneCenter() const
+{
+    const QPointF localCenter = m_hasStoredItemLocalCenter ? m_storedItemLocalCenter : m_rect.center();
+    return mapToScene(localCenter);
+}
+
+void KitchenItem::setStoredItemSceneCenter(const QPointF &sceneCenter)
+{
+    m_storedItemLocalCenter = mapFromScene(sceneCenter);
+    m_hasStoredItemLocalCenter = true;
+    update();
+}
+
+void KitchenItem::clearStoredItemSceneCenter()
+{
+    m_storedItemLocalCenter = m_rect.center();
+    m_hasStoredItemLocalCenter = false;
     update();
 }
 
@@ -91,7 +133,6 @@ void KitchenItem::setStoredCount(int count)
     if (m_storedCount == count) {
         return;
     }
-
     m_storedCount = count;
     update();
 }
@@ -107,7 +148,6 @@ void KitchenItem::setStationProgress(qreal progress)
     if (qFuzzyCompare(m_stationProgress, bounded)) {
         return;
     }
-
     m_stationProgress = bounded;
     update();
 }
@@ -122,7 +162,6 @@ void KitchenItem::setSoupReady(bool ready)
     if (m_soupReady == ready) {
         return;
     }
-
     m_soupReady = ready;
     update();
 }
@@ -137,7 +176,6 @@ void KitchenItem::setTomatoCount(int count)
     if (m_tomatoCount == count) {
         return;
     }
-
     m_tomatoCount = count;
     update();
 }
@@ -152,7 +190,6 @@ void KitchenItem::setEggCount(int count)
     if (m_eggCount == count) {
         return;
     }
-
     m_eggCount = count;
     update();
 }
@@ -169,6 +206,8 @@ bool KitchenItem::isBurnt() const
 
 void KitchenItem::tick(qreal deltaSeconds, bool allowBurning)
 {
+    m_animTime += deltaSeconds;
+
     if (m_kind != StoveKind || m_isBurnt) {
         return;
     }
@@ -177,7 +216,6 @@ void KitchenItem::tick(qreal deltaSeconds, bool allowBurning)
         if (!allowBurning) {
             return;
         }
-
         m_burnProgress = qBound(0.0, m_burnProgress + deltaSeconds / 6.0, 1.0);
         if (m_burnProgress >= 1.0) {
             m_isBurnt = true;
@@ -186,15 +224,15 @@ void KitchenItem::tick(qreal deltaSeconds, bool allowBurning)
         return;
     }
 
-    if (m_tomatoCount < 2 || m_eggCount < 1) {
+    if (m_storedItem != RiceItem) {
         return;
     }
 
-    setStationProgress(m_stationProgress + deltaSeconds / 5.0);
+    setStationProgress(m_stationProgress + deltaSeconds / 4.0);
     if (m_stationProgress >= 1.0) {
         m_soupReady = true;
         m_burnProgress = 0.0;
-        m_storedItem = SoupPlateItem;
+        m_storedItem = CookedRiceItem;
         update();
     }
 }
@@ -202,19 +240,31 @@ void KitchenItem::tick(qreal deltaSeconds, bool allowBurning)
 void KitchenItem::resetState()
 {
     m_storedItem = NoItem;
+    clearStoredItemSceneCenter();
     m_storedCount = 0;
     m_tomatoCount = 0;
     m_eggCount = 0;
     m_stationProgress = 0.0;
     m_burnProgress = 0.0;
+    m_animTime = 0.0;
     m_soupReady = false;
     m_isBurnt = false;
     update();
 }
 
+int KitchenItem::gridX() const
+{
+    return m_gridX;
+}
+
+int KitchenItem::gridY() const
+{
+    return m_gridY;
+}
+
 void KitchenItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *)
 {
-    painter->setRenderHint(QPainter::Antialiasing, true);
+    painter->setRenderHint(QPainter::Antialiasing, false);
 
     switch (m_kind) {
     case FloorTileKind:
@@ -239,7 +289,12 @@ void KitchenItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWi
         drawEggStation(painter);
         break;
     case PlateStationKind:
+    case CleanPlateStationKind:
         drawPlateStation(painter);
+        break;
+    case SinkStationKind:
+    case DirtyPlateStationKind:
+        drawCounter(painter);
         break;
     case CounterKind:
         drawCounter(painter);
@@ -251,36 +306,42 @@ QColor KitchenItem::fillColor() const
 {
     switch (m_kind) {
     case FloorTileKind:
-        return QColor(247, 231, 198);
+        return QColor(255, 236, 245);
     case BoundaryWallKind:
-        return QColor(88, 88, 88);
+        return QColor(255, 194, 214);
     case StoveKind:
-        return QColor(173, 216, 255);
+        return QColor(182, 215, 248);
     case ChoppingStationKind:
-        return QColor(255, 214, 153);
+        return QColor(255, 227, 188);
     case DeliveryWindowKind:
-        return QColor(255, 241, 118);
+        return QColor(186, 232, 182);
     case TomatoStationKind:
-        return QColor(255, 179, 186);
+        return QColor(255, 206, 220);
     case EggStationKind:
-        return QColor(255, 240, 198);
+        return QColor(255, 235, 196);
     case PlateStationKind:
-        return QColor(232, 239, 255);
+    case CleanPlateStationKind:
+        return QColor(222, 238, 255);
+    case SinkStationKind:
+        return QColor(206, 226, 232);
+    case DirtyPlateStationKind:
+        return QColor(232, 218, 204);
     case CounterKind:
-        return QColor(196, 231, 255);
+        return QColor(247, 208, 180);
     }
-
     return QColor(255, 255, 255);
 }
 
 void KitchenItem::drawBase(QPainter *painter, const QColor &fillColor) const
 {
-    drawRoundedRect(painter, m_rect.adjusted(0.5, 0.5, -0.5, -0.5), fillColor);
+    painter->setPen(pixelPen());
+    painter->setBrush(fillColor);
+    painter->drawRect(m_rect.adjusted(0.0, 0.0, -1.0, -1.0));
 }
 
 void KitchenItem::drawFloor(QPainter *painter) const
 {
-    painter->setPen(outlinePen());
+    painter->setPen(QPen(QColor(228, 210, 226), 1.0));
     painter->setBrush(fillColor());
     painter->drawRect(m_rect.adjusted(0.0, 0.0, -1.0, -1.0));
 }
@@ -288,186 +349,102 @@ void KitchenItem::drawFloor(QPainter *painter) const
 void KitchenItem::drawWall(QPainter *painter) const
 {
     drawBase(painter, fillColor());
-
-    painter->setPen(outlinePen());
-    painter->setBrush(QColor(130, 130, 130));
-    painter->drawRoundedRect(m_rect.adjusted(5.0, 5.0, -5.0, -m_rect.height() * 0.5), CornerRadius, CornerRadius);
+    painter->fillRect(QRectF(4.0, 4.0, 56.0, 12.0), QColor(255, 226, 236));
+    painter->fillRect(QRectF(4.0, 18.0, 56.0, 12.0), QColor(245, 172, 198));
+    painter->fillRect(QRectF(4.0, 32.0, 56.0, 12.0), QColor(255, 226, 236));
+    painter->fillRect(QRectF(4.0, 46.0, 56.0, 12.0), QColor(245, 172, 198));
 }
 
 void KitchenItem::drawStove(QPainter *painter) const
 {
     drawBase(painter, fillColor());
-
-    painter->setPen(outlinePen());
-    painter->setBrush(QColor(92, 94, 101));
-    painter->drawRoundedRect(m_rect.adjusted(8.0, 9.0, -8.0, -17.0), CornerRadius, CornerRadius);
-
-    painter->setBrush(QColor(214, 72, 52));
-    painter->drawRoundedRect(QRectF(8.0, 48.0, 48.0, 10.0), 4.0, 4.0);
-
-    painter->setBrush(QColor(255, 255, 255));
-    painter->drawEllipse(QRectF(13.0, 14.0, 14.0, 14.0));
-    painter->drawEllipse(QRectF(37.0, 14.0, 14.0, 14.0));
-    painter->drawEllipse(QRectF(13.0, 34.0, 14.0, 14.0));
-    painter->drawEllipse(QRectF(37.0, 34.0, 14.0, 14.0));
-
-    painter->setBrush(QColor(255, 183, 77));
-    painter->drawEllipse(QRectF(17.0, 18.0, 6.0, 6.0));
-    painter->drawEllipse(QRectF(41.0, 18.0, 6.0, 6.0));
-    painter->drawEllipse(QRectF(17.0, 38.0, 6.0, 6.0));
-    painter->drawEllipse(QRectF(41.0, 38.0, 6.0, 6.0));
-
-    painter->setBrush(QColor(255, 255, 255));
-    painter->drawRoundedRect(QRectF(12.0, 51.0, 40.0, 7.0), 3.0, 3.0);
-
-    if (m_isBurnt) {
-        painter->setBrush(QColor(44, 44, 44));
-        painter->drawEllipse(QRectF(18.0, 18.0, 28.0, 28.0));
-        painter->setPen(QPen(QColor(255, 120, 92), 2.0, Qt::SolidLine, Qt::RoundCap));
-        painter->drawLine(QPointF(20.0, 20.0), QPointF(44.0, 44.0));
-        painter->drawLine(QPointF(44.0, 20.0), QPointF(20.0, 44.0));
-        Theme::text(painter, QRectF(8.0, 4.0, 50.0, 16.0), QStringLiteral("BURNT"), 8, true, QColor(255, 225, 200));
-    } else if (m_soupReady) {
-        drawCarryItemIcon(painter, SoupPlateItem, QRectF(18.0, 18.0, 28.0, 28.0));
-        painter->setPen(QPen(QColor(255, 255, 255, 210), 2.0, Qt::SolidLine, Qt::RoundCap));
-        painter->drawArc(QRectF(18.0, 7.0, 10.0, 18.0), 0 * 16, 180 * 16);
-        painter->drawArc(QRectF(28.0, 2.0, 10.0, 20.0), 0 * 16, 180 * 16);
-        painter->drawArc(QRectF(38.0, 7.0, 10.0, 18.0), 0 * 16, 180 * 16);
-    } else if (m_tomatoCount > 0 || m_eggCount > 0) {
-        if (m_tomatoCount > 0) {
-            drawCarryItemIcon(painter, ChoppedTomatoItem, QRectF(12.0, 17.0, 22.0, 22.0));
-        }
-        if (m_eggCount > 0) {
-            drawCarryItemIcon(painter, EggItem, QRectF(30.0, 19.0, 20.0, 20.0));
-        }
-        Theme::text(painter,
-                    QRectF(8.0, 4.0, 50.0, 16.0),
-                    QStringLiteral("T%1 E%2").arg(m_tomatoCount).arg(m_eggCount),
-                    8,
-                    true);
+    painter->fillRect(QRectF(8.0, 8.0, 48.0, 36.0), QColor(76, 80, 90));
+    painter->fillRect(QRectF(12.0, 12.0, 40.0, 28.0), QColor(52, 56, 64));
+    painter->fillRect(QRectF(12.0, 48.0, 40.0, 8.0), QColor(224, 88, 70));
+    const bool flameActive = m_storedItem == RiceItem || m_soupReady || m_isBurnt;
+    if (flameActive) {
+        const qreal phase = std::fmod(m_animTime * 6.0, 2.0);
+        const qreal wobble = (phase < 1.0) ? phase : (2.0 - phase);
+        const QColor outer = m_isBurnt ? QColor(80, 80, 80) : QColor(255, 120, 62);
+        const QColor inner = m_isBurnt ? QColor(42, 42, 42) : QColor(255, 214, 96);
+        painter->fillRect(QRectF(18.0, 42.0 - wobble, 8.0, 8.0 + wobble), outer);
+        painter->fillRect(QRectF(28.0, 39.0 - wobble * 1.5, 10.0, 11.0 + wobble * 1.5), inner);
+        painter->fillRect(QRectF(40.0, 42.0 - wobble, 8.0, 8.0 + wobble), outer);
     }
 
-    if (m_tomatoCount >= 2 && m_eggCount >= 1 && !m_soupReady) {
-        drawProgressBar(painter, QRectF(11.0, 52.0, 42.0, 6.0), QColor(255, 159, 67));
+    if (m_isBurnt) {
+        painter->fillRect(QRectF(18.0, 18.0, 20.0, 12.0), QColor(24, 24, 24));
     } else if (m_soupReady) {
-        drawProgressBar(painter, QRectF(11.0, 52.0, 42.0, 6.0), QColor(255, 104, 88));
+        drawCarryItemIcon(painter, CookedRiceItem, QRectF(18.0, 14.0, 28.0, 24.0));
+    } else {
+        if (m_storedItem == RiceItem) {
+            drawCarryItemIcon(painter, RiceItem, QRectF(18.0, 14.0, 28.0, 24.0));
+        }
+    }
+    if (!m_isBurnt && (m_storedItem == RiceItem || m_soupReady)) {
+        drawProgressBar(painter, QRectF(12.0, 52.0, 40.0, 4.0), m_soupReady ? QColor(255, 108, 88) : QColor(255, 188, 84));
     }
 }
 
 void KitchenItem::drawChoppingStation(QPainter *painter) const
 {
     drawBase(painter, fillColor());
-
-    painter->setPen(outlinePen());
-    painter->setBrush(QColor(255, 244, 224));
-    painter->drawRoundedRect(QRectF(8.0, 10.0, 48.0, 40.0), CornerRadius, CornerRadius);
-    painter->setBrush(QColor(180, 104, 62));
-    painter->drawRoundedRect(QRectF(12.0, 14.0, 40.0, 28.0), 8.0, 8.0);
-    painter->setBrush(QColor(228, 228, 228));
-    painter->drawRoundedRect(QRectF(34.0, 17.0, 14.0, 6.0), 3.0, 3.0);
-    painter->setBrush(QColor(92, 54, 36));
-    painter->drawRoundedRect(QRectF(44.0, 18.0, 4.0, 16.0), 2.0, 2.0);
-
-    painter->setBrush(QColor(255, 255, 255));
-    painter->drawRoundedRect(QRectF(12.0, 52.0, 24.0, 6.0), 3.0, 3.0);
-
-    painter->setBrush(QColor(173, 216, 230));
-    painter->drawRoundedRect(QRectF(38.0, 52.0, 14.0, 6.0), 3.0, 3.0);
-
-    drawStationItem(painter, QRectF(19.0, 16.0, 26.0, 26.0));
-    if (m_storedItem == TomatoItem && m_stationProgress > 0.0 && m_stationProgress < 1.0) {
-        drawProgressBar(painter, QRectF(13.0, 52.0, 38.0, 5.0), QColor(120, 202, 63));
+    painter->fillRect(QRectF(8.0, 8.0, 48.0, 44.0), QColor(255, 245, 226));
+    painter->fillRect(QRectF(14.0, 16.0, 36.0, 18.0), QColor(168, 120, 82));
+    painter->fillRect(QRectF(32.0, 14.0, 14.0, 4.0), QColor(238, 238, 238));
+    painter->fillRect(QRectF(42.0, 14.0, 4.0, 16.0), QColor(90, 62, 44));
+    drawStationItem(painter, QRectF(18.0, 16.0, 20.0, 20.0));
+    if ((m_storedItem == CucumberItem || m_storedItem == ShrimpItem)
+        && m_stationProgress > 0.0 && m_stationProgress < 1.0) {
+        drawProgressBar(painter, QRectF(12.0, 52.0, 40.0, 4.0), QColor(118, 214, 112));
     }
 }
 
 void KitchenItem::drawDeliveryWindow(QPainter *painter) const
 {
     drawBase(painter, fillColor());
-
-    painter->setPen(outlinePen());
-    painter->setBrush(QColor(255, 255, 255));
-    painter->drawRoundedRect(QRectF(8.0, 12.0, 48.0, 18.0), CornerRadius, CornerRadius);
-    painter->drawRoundedRect(QRectF(16.0, 34.0, 32.0, 18.0), CornerRadius, CornerRadius);
-
-    painter->setBrush(QColor(255, 204, 128));
-    painter->drawEllipse(QRectF(26.0, 18.0, 12.0, 12.0));
-    painter->setBrush(QColor(214, 72, 52));
-    painter->drawRoundedRect(QRectF(21.0, 38.0, 22.0, 10.0), 4.0, 4.0);
+    painter->fillRect(QRectF(8.0, 12.0, 48.0, 12.0), QColor(252, 255, 250));
+    painter->fillRect(QRectF(16.0, 32.0, 32.0, 18.0), QColor(255, 255, 255));
+    painter->fillRect(QRectF(20.0, 36.0, 24.0, 8.0), QColor(242, 104, 138));
 }
 
 void KitchenItem::drawTomatoStation(QPainter *painter) const
 {
     drawBase(painter, fillColor());
-
-    painter->setPen(outlinePen());
-    painter->setBrush(QColor(148, 90, 66));
-    painter->drawRoundedRect(QRectF(10.0, 12.0, 44.0, 40.0), CornerRadius, CornerRadius);
-    painter->setBrush(QColor(171, 109, 82));
-    painter->drawRoundedRect(QRectF(14.0, 16.0, 36.0, 32.0), 8.0, 8.0);
-
-    painter->setBrush(QColor(255, 112, 99));
-    painter->drawEllipse(QRectF(14.0, 18.0, 16.0, 16.0));
-    painter->drawEllipse(QRectF(34.0, 18.0, 16.0, 16.0));
-    painter->drawEllipse(QRectF(24.0, 32.0, 16.0, 16.0));
-
-    painter->setBrush(QColor(119, 221, 119));
-    painter->drawEllipse(QRectF(20.0, 15.0, 6.0, 6.0));
-    painter->drawEllipse(QRectF(40.0, 15.0, 6.0, 6.0));
-    painter->drawEllipse(QRectF(30.0, 29.0, 6.0, 6.0));
+    painter->fillRect(QRectF(10.0, 12.0, 44.0, 40.0), QColor(182, 132, 110));
+    painter->fillRect(QRectF(14.0, 16.0, 36.0, 32.0), QColor(212, 162, 136));
+    painter->fillRect(QRectF(16.0, 18.0, 14.0, 14.0), QColor(244, 90, 86));
+    painter->fillRect(QRectF(34.0, 18.0, 14.0, 14.0), QColor(244, 90, 86));
+    painter->fillRect(QRectF(24.0, 32.0, 14.0, 14.0), QColor(244, 90, 86));
 }
 
 void KitchenItem::drawEggStation(QPainter *painter) const
 {
     drawBase(painter, fillColor());
-
-    painter->setPen(outlinePen());
-    painter->setBrush(QColor(164, 112, 73));
-    painter->drawRoundedRect(QRectF(10.0, 12.0, 44.0, 40.0), CornerRadius, CornerRadius);
-    painter->setBrush(QColor(194, 143, 92));
-    painter->drawRoundedRect(QRectF(14.0, 16.0, 36.0, 32.0), 8.0, 8.0);
-
-    painter->setBrush(QColor(255, 249, 235));
-    painter->drawEllipse(QRectF(16.0, 18.0, 14.0, 18.0));
-    painter->drawEllipse(QRectF(30.0, 18.0, 14.0, 18.0));
-    painter->drawEllipse(QRectF(23.0, 30.0, 14.0, 18.0));
-    painter->setBrush(QColor(247, 197, 76));
-    painter->drawEllipse(QRectF(20.0, 24.0, 6.0, 6.0));
-    painter->drawEllipse(QRectF(34.0, 24.0, 6.0, 6.0));
-    painter->drawEllipse(QRectF(27.0, 36.0, 6.0, 6.0));
+    painter->fillRect(QRectF(10.0, 12.0, 44.0, 40.0), QColor(184, 142, 98));
+    painter->fillRect(QRectF(14.0, 16.0, 36.0, 32.0), QColor(214, 170, 122));
+    painter->fillRect(QRectF(18.0, 20.0, 10.0, 14.0), QColor(255, 250, 236));
+    painter->fillRect(QRectF(32.0, 20.0, 10.0, 14.0), QColor(255, 250, 236));
+    painter->fillRect(QRectF(25.0, 34.0, 10.0, 14.0), QColor(255, 250, 236));
 }
 
 void KitchenItem::drawPlateStation(QPainter *painter) const
 {
     drawBase(painter, fillColor());
-
-    painter->setPen(outlinePen());
-    painter->setBrush(QColor(244, 247, 252));
-    painter->drawRoundedRect(QRectF(10.0, 12.0, 44.0, 40.0), CornerRadius, CornerRadius);
-
-    painter->setBrush(QColor(255, 255, 255));
-    painter->drawEllipse(QRectF(16.0, 24.0, 18.0, 18.0));
-    painter->drawEllipse(QRectF(22.0, 18.0, 18.0, 18.0));
-    painter->drawEllipse(QRectF(30.0, 24.0, 18.0, 18.0));
-    painter->setBrush(QColor(222, 234, 248));
-    painter->drawEllipse(QRectF(20.0, 28.0, 10.0, 10.0));
-    painter->drawEllipse(QRectF(26.0, 22.0, 10.0, 10.0));
-    painter->drawEllipse(QRectF(34.0, 28.0, 10.0, 10.0));
+    painter->fillRect(QRectF(10.0, 12.0, 44.0, 40.0), QColor(238, 244, 252));
+    painter->fillRect(QRectF(18.0, 22.0, 18.0, 18.0), QColor(255, 255, 255));
+    painter->fillRect(QRectF(24.0, 18.0, 18.0, 18.0), QColor(255, 255, 255));
+    painter->fillRect(QRectF(30.0, 24.0, 18.0, 18.0), QColor(255, 255, 255));
 }
 
 void KitchenItem::drawCounter(QPainter *painter) const
 {
     drawBase(painter, fillColor());
-
-    painter->setPen(outlinePen());
-    painter->setBrush(QColor(247, 222, 173));
-    painter->drawRoundedRect(QRectF(8.0, 12.0, 48.0, 16.0), CornerRadius, CornerRadius);
-    painter->setBrush(QColor(199, 162, 118));
-    painter->drawRoundedRect(QRectF(8.0, 30.0, 48.0, 24.0), CornerRadius, CornerRadius);
-    painter->setBrush(QColor(177, 140, 101));
-    painter->drawRoundedRect(QRectF(12.0, 34.0, 16.0, 16.0), 4.0, 4.0);
-    painter->drawRoundedRect(QRectF(36.0, 34.0, 16.0, 16.0), 4.0, 4.0);
-
-    drawStationItem(painter, QRectF(18.0, 14.0, 28.0, 28.0));
+    painter->fillRect(QRectF(8.0, 10.0, 48.0, 16.0), QColor(255, 230, 206));
+    painter->fillRect(QRectF(8.0, 28.0, 48.0, 24.0), QColor(235, 186, 152));
+    painter->fillRect(QRectF(12.0, 34.0, 14.0, 14.0), QColor(214, 164, 130));
+    painter->fillRect(QRectF(38.0, 34.0, 14.0, 14.0), QColor(214, 164, 130));
+    drawStationItem(painter, QRectF(18.0, 14.0, 24.0, 24.0));
 }
 
 void KitchenItem::drawStationItem(QPainter *painter, const QRectF &rect) const
@@ -477,15 +454,9 @@ void KitchenItem::drawStationItem(QPainter *painter, const QRectF &rect) const
 
 void KitchenItem::drawProgressBar(QPainter *painter, const QRectF &rect, const QColor &fillColor) const
 {
-    painter->setPen(outlinePen());
-    painter->setBrush(QColor(255, 255, 255, 220));
-    painter->drawRoundedRect(rect, 3.0, 3.0);
-    painter->setBrush(fillColor);
-    const qreal progressValue = m_soupReady ? m_burnProgress : m_stationProgress;
-    painter->drawRoundedRect(QRectF(rect.left(),
-                                    rect.top(),
-                                    rect.width() * progressValue,
-                                    rect.height()),
-                             3.0,
-                             3.0);
+    painter->setPen(pixelPen());
+    painter->setBrush(QColor(255, 255, 255));
+    painter->drawRect(rect.adjusted(0.0, 0.0, -1.0, -1.0));
+    const qreal value = m_soupReady ? m_burnProgress : m_stationProgress;
+    painter->fillRect(QRectF(rect.left() + 1.0, rect.top() + 1.0, (rect.width() - 2.0) * value, rect.height() - 2.0), fillColor);
 }

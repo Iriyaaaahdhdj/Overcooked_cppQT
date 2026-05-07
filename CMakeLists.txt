@@ -27,6 +27,8 @@ add_executable(OvercookedQt
     TutorialOverlayItem.cpp
     HudOverlayItem.h
     HudOverlayItem.cpp
+    ResultOverlayItem.h
+    ResultOverlayItem.cpp
 )
 
 target_link_libraries(OvercookedQt PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets)
