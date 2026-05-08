@@ -69,6 +69,9 @@ private:
     void addKitchenItem(int gridX, int gridY, int gridWidth, int gridHeight, int kind);
     void addKitchenItemRect(const QRectF &rect, int kind);
     void refreshDishStationVisuals();
+    void spawnRandomOrder();
+    bool hasMatchingOrder(int dishBits) const;
+    bool takeMatchingOrder(int dishBits);
     void tick();
     void startGame();
     void beginRound();
@@ -106,6 +109,7 @@ private:
     QGraphicsSimpleTextItem *m_statusText;
     QGraphicsSimpleTextItem *m_bannerText;
     QGraphicsItem *m_dynamicEffectsItem;
+    QGraphicsItem *m_orderOverlayItem;
     SceneState m_state;
     SceneState m_previousState;
     int m_score;
@@ -117,7 +121,9 @@ private:
     int m_totalPlateCount;
     int m_availableCleanPlates;
     int m_dirtyPlateCount;
+    QList<int> m_orderBits;
     QList<qreal> m_pendingDirtyPlateTimers;
+    qreal m_orderSpawnTimerSeconds;
     qreal m_timeRemainingSeconds;
     qreal m_roundDurationSeconds;
     qreal m_effectPhase;

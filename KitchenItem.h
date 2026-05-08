@@ -20,6 +20,7 @@ public:
         CleanPlateStationKind,
         SinkStationKind,
         DirtyPlateStationKind,
+        GarbageStationKind,
         CounterKind
     };
 

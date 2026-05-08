@@ -17,6 +17,7 @@
 #include <QDir>
 #include <QPainter>
 #include <QPixmap>
+#include <QRandomGenerator>
 #include <QtMath>
 
 #include "DialogOverlayItem.h"
@@ -398,44 +399,104 @@ private:
 
     void drawBackground(QPainter *painter) const
     {
+        // Built from a 48px color matrix sampled from 厨房场景2.png.
+        // Dominant top-band colors: #11100F, #312F34, #938471, #C57559.
         painter->setPen(Qt::NoPen);
-        painter->setBrush(QColor(232, 208, 168));
+        painter->setBrush(QColor(17, 16, 15));
         painter->drawRect(QRectF(0.0, 0.0, GameScene::WindowWidth, 186.0));
 
-        painter->setPen(QPen(QColor(205, 178, 138), 1.0));
-        for (int y = 16; y < 178; y += 24) {
-            painter->drawLine(QPointF(0.0, y), QPointF(GameScene::WindowWidth, y));
-        }
-        for (int x = 0; x < GameScene::WindowWidth; x += 64) {
-            painter->drawLine(QPointF(x, 0.0), QPointF(x, 186.0));
+        const auto drawStoneWall = [&](const QRectF &rect, const QColor &base) {
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(base);
+            painter->drawRect(rect);
+            painter->setPen(QPen(QColor(73, 67, 62), 1.0));
+            for (qreal y = rect.top() + 12.0; y < rect.bottom(); y += 14.0) {
+                painter->drawLine(QPointF(rect.left(), y), QPointF(rect.right(), y));
+            }
+            for (qreal x = rect.left() + 28.0; x < rect.right(); x += 44.0) {
+                painter->drawLine(QPointF(x, rect.top()), QPointF(x, rect.bottom()));
+            }
+        };
+
+        const auto drawBackShop = [&](const QRectF &roof, const QRectF &wall, int windowCount) {
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(QColor(20, 18, 19));
+            painter->drawRect(roof);
+            painter->setBrush(QColor(49, 47, 52));
+            painter->drawRect(QRectF(roof.left(), roof.bottom() - 8.0, roof.width(), 8.0));
+            painter->setBrush(QColor(197, 117, 89));
+            painter->drawRect(QRectF(roof.left() + 4.0, roof.bottom() - 1.0, roof.width() + 24.0, 12.0));
+            painter->setBrush(QColor(151, 133, 126));
+            drawStoneWall(wall, QColor(143, 127, 106));
+
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(QColor(80, 47, 56));
+            for (int i = 0; i < windowCount; ++i) {
+                const qreal x = roof.left() + 18.0 + i * 58.0;
+                painter->drawRect(QRectF(x, roof.top() + 19.0, 34.0, 20.0));
+                painter->setBrush(QColor(45, 32, 38));
+                painter->drawRect(QRectF(x, roof.top() + 34.0, 34.0, 5.0));
+                painter->setBrush(QColor(80, 47, 56));
+            }
+        };
+
+        drawBackShop(QRectF(328.0, 74.0, 592.0, 44.0), QRectF(350.0, 122.0, 442.0, 58.0), 7);
+        drawBackShop(QRectF(938.0, 76.0, 240.0, 42.0), QRectF(1016.0, 122.0, 150.0, 58.0), 3);
+
+        const auto drawCustomer = [&](const QPointF &base, const QColor &shirt) {
+            painter->setPen(QPen(QColor(35, 27, 24), 1.0));
+            painter->setBrush(QColor(196, 137, 82));
+            painter->drawEllipse(QRectF(base.x() - 10.0, base.y() - 36.0, 20.0, 20.0));
+            painter->setBrush(shirt);
+            painter->drawRoundedRect(QRectF(base.x() - 17.0, base.y() - 20.0, 34.0, 32.0), 8.0, 8.0);
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(QColor(52, 38, 34));
+            painter->drawEllipse(QRectF(base.x() - 12.0, base.y() - 38.0, 24.0, 13.0));
+        };
+        drawCustomer(QPointF(690.0, 154.0), QColor(68, 92, 128));
+        drawCustomer(QPointF(1062.0, 154.0), QColor(66, 108, 78));
+
+        painter->setBrush(QColor(38, 35, 41));
+        painter->drawRect(QRectF(735.0, 112.0, 102.0, 66.0));
+        painter->setBrush(QColor(68, 48, 58));
+        painter->drawRect(QRectF(748.0, 126.0, 76.0, 42.0));
+
+        painter->setBrush(QColor(15, 30, 44));
+        painter->drawRoundedRect(QRectF(1015.0, 90.0, 162.0, 58.0), 6.0, 6.0);
+        painter->setBrush(QColor(8, 17, 28));
+        painter->drawRoundedRect(QRectF(1022.0, 97.0, 148.0, 44.0), 4.0, 4.0);
+        painter->setPen(QPen(QColor(39, 224, 255), 1.6));
+        painter->drawLine(QPointF(1030.0, 104.0), QPointF(1162.0, 104.0));
+        drawTextCentered(painter, QRectF(1024.0, 110.0, 144.0, 22.0), QStringLiteral("NEGI SUSHI"), 11, QColor(39, 224, 255));
+        painter->setPen(Qt::NoPen);
+
+        painter->setBrush(QColor(44, 34, 36));
+        painter->drawRect(QRectF(0.0, 58.0, 154.0, 94.0));
+        painter->setBrush(QColor(189, 138, 82));
+        painter->drawRect(QRectF(52.0, 52.0, 48.0, 124.0));
+        painter->setBrush(QColor(121, 79, 52));
+        painter->drawRect(QRectF(46.0, 58.0, 9.0, 116.0));
+        painter->drawRect(QRectF(97.0, 58.0, 9.0, 116.0));
+        painter->setBrush(QColor(231, 180, 116));
+        for (int i = 0; i < 5; ++i) {
+            painter->drawRect(QRectF(60.0, 64.0 + i * 22.0, 32.0, 12.0));
         }
 
         painter->setPen(Qt::NoPen);
-        painter->setBrush(QColor(39, 32, 38));
-        painter->drawRect(QRectF(330.0, 76.0, 590.0, 42.0));
-        painter->drawRect(QRectF(940.0, 76.0, 238.0, 42.0));
-        painter->setBrush(QColor(142, 139, 135));
-        painter->drawRect(QRectF(350.0, 118.0, 442.0, 64.0));
-        painter->drawRect(QRectF(1015.0, 118.0, 150.0, 64.0));
-        painter->setBrush(QColor(185, 86, 55));
-        painter->drawRect(QRectF(330.0, 116.0, 608.0, 12.0));
-        painter->drawRect(QRectF(988.0, 116.0, 190.0, 12.0));
-        painter->setBrush(QColor(38, 35, 41));
-        painter->drawRect(QRectF(735.0, 112.0, 102.0, 66.0));
-        painter->setBrush(QColor(15, 30, 44));
-        painter->drawRect(QRectF(1016.0, 92.0, 160.0, 56.0));
-        drawTextCentered(painter, QRectF(1024.0, 110.0, 144.0, 22.0), QStringLiteral("NEGI SUSHI"), 11, QColor(31, 219, 255));
-        painter->setBrush(QColor(105, 60, 70));
-        for (int i = 0; i < 7; ++i) {
-            painter->drawRect(QRectF(344.0 + i * 58.0, 96.0, 34.0, 22.0));
+        painter->setBrush(QColor(82, 95, 70));
+        painter->drawRect(QRectF(74.0, 136.0, 16.0, 42.0));
+        painter->setBrush(QColor(236, 132, 188));
+        for (const QPointF &p : QList<QPointF>{QPointF(34.0, 132.0), QPointF(50.0, 118.0), QPointF(70.0, 128.0),
+                                                QPointF(94.0, 120.0), QPointF(112.0, 136.0), QPointF(66.0, 106.0)}) {
+            painter->drawEllipse(QRectF(p.x() - 18.0, p.y() - 14.0, 36.0, 28.0));
         }
+        painter->setBrush(QColor(252, 166, 210, 170));
+        painter->drawEllipse(QRectF(48.0, 116.0, 44.0, 30.0));
+        painter->setBrush(QColor(206, 96, 162, 160));
+        painter->drawEllipse(QRectF(80.0, 132.0, 34.0, 24.0));
 
-        painter->setBrush(QColor(192, 138, 72));
-        painter->drawRect(QRectF(48.0, 54.0, 48.0, 124.0));
-        painter->setBrush(QColor(232, 180, 116));
-        for (int i = 0; i < 5; ++i) {
-            painter->drawRect(QRectF(56.0, 64.0 + i * 22.0, 32.0, 12.0));
-        }
+        painter->setBrush(QColor(72, 56, 44, 92));
+        painter->drawEllipse(QRectF(20.0, 166.0, 144.0, 26.0));
     }
 
     void drawFloor(QPainter *painter) const
@@ -565,12 +626,9 @@ private:
 
         painter->setPen(QPen(QColor(100, 82, 66), 1.3));
         painter->setBrush(QColor(223, 205, 177));
-        painter->drawRect(QRectF(786.0, 500.0, 118.0, 58.0));
-        painter->drawRect(QRectF(904.0, 500.0, 64.0, 58.0));
-        painter->drawRect(QRectF(968.0, 500.0, 70.0, 58.0));
+        painter->drawRect(QRectF(786.0, 500.0, 182.0, 58.0));
         painter->setPen(QPen(QColor(164, 141, 112), 1.0));
         painter->drawLine(QPointF(904.0, 500.0), QPointF(904.0, 558.0));
-        painter->drawLine(QPointF(968.0, 500.0), QPointF(968.0, 558.0));
         painter->setBrush(QColor(182, 224, 236));
         painter->drawRect(QRectF(848.0, 506.0, 50.0, 34.0));
         painter->setBrush(QColor(190, 194, 196));
@@ -591,12 +649,6 @@ private:
         painter->setPen(Qt::NoPen);
         painter->setBrush(QColor(113, 190, 220, 180));
         painter->drawRect(QRectF(854.0, 496.0, 4.0, 10.0));
-        painter->setPen(QPen(QColor(150, 130, 114), 1.2));
-        painter->setBrush(QColor(245, 242, 232));
-        painter->drawEllipse(QRectF(988.0, 518.0, 36.0, 20.0));
-        painter->setBrush(QColor(232, 226, 214));
-        painter->drawEllipse(QRectF(996.0, 523.0, 20.0, 10.0));
-        drawTextCentered(painter, QRectF(976.0, 540.0, 58.0, 12.0), QStringLiteral("DIRTY"), 6, QColor(92, 68, 58));
 
         drawIngredientCrate(painter, QRectF(160.0, 254.0, 54.0, 38.0), NoriItem, QStringLiteral("NORI"));
         drawIngredientCrate(painter, QRectF(160.0, 312.0, 54.0, 38.0), ShrimpItem, QStringLiteral("FISH"));
@@ -633,9 +685,17 @@ private:
         }
         drawBambooPlanter(painter, QPointF(336.0, 570.0));
         drawBambooPlanter(painter, QPointF(828.0, 620.0));
-        painter->setPen(Qt::NoPen);
-        painter->setBrush(QColor(221, 78, 50));
-        painter->drawRect(QRectF(806.0, 268.0, 22.0, 42.0));
+
+        painter->setPen(QPen(QColor(54, 66, 46), 1.5));
+        painter->setBrush(QColor(64, 96, 58));
+        painter->drawRect(QRectF(586.0, 550.0, 44.0, 48.0));
+        painter->setBrush(QColor(45, 58, 42));
+        painter->drawRect(QRectF(582.0, 544.0, 52.0, 10.0));
+        painter->setBrush(QColor(108, 146, 82));
+        painter->drawRect(QRectF(592.0, 558.0, 30.0, 8.0));
+        painter->setPen(QPen(QColor(238, 248, 232), 1.3));
+        painter->drawLine(QPointF(598.0, 576.0), QPointF(618.0, 590.0));
+        painter->drawLine(QPointF(618.0, 576.0), QPointF(598.0, 590.0));
 
         drawDeliveryExit(painter);
 
@@ -1203,7 +1263,7 @@ public:
         }
 
         const QRectF beltRect(124.0, 438.0, 50.0, 78.0);
-        painter->setBrush(QColor(225, 224, 216));
+        painter->setBrush(QColor(226, 226, 218));
         const int beltOffset = static_cast<int>(phase * 42.0) % 22;
         for (int y = static_cast<int>(beltRect.top()) - 22 + beltOffset;
              y < beltRect.bottom();
@@ -1236,6 +1296,65 @@ public:
             painter->drawRect(QRectF(stoveRect.left() + 16.0, stoveRect.bottom() - 12.0 - wobble, 4.0, 6.0 + wobble));
             painter->drawRect(QRectF(stoveRect.left() + 28.0, stoveRect.bottom() - 16.0 - wobble, 4.0, 8.0 + wobble));
             painter->drawRect(QRectF(stoveRect.left() + 40.0, stoveRect.bottom() - 12.0 - wobble, 4.0, 6.0 + wobble));
+
+            const QRectF statusBar(stoveRect.left() + 10.0, stoveRect.top() - 14.0, stoveRect.width() - 20.0, 8.0);
+            if (item->storedItem() == RiceItem && !item->soupReady() && !item->isBurnt()) {
+                painter->setPen(QPen(QColor(62, 86, 64), 1.0));
+                painter->setBrush(QColor(250, 255, 248));
+                painter->drawRect(statusBar);
+                painter->setPen(Qt::NoPen);
+                painter->setBrush(QColor(80, 202, 96));
+                painter->drawRect(QRectF(statusBar.left() + 1.0,
+                                         statusBar.top() + 1.0,
+                                         (statusBar.width() - 2.0) * item->stationProgress(),
+                                         statusBar.height() - 2.0));
+            } else if (item->soupReady() && !item->isBurnt()) {
+                if (item->burnProgress() <= 0.0 || item->burnProgress() < 0.16) {
+                    const bool visible = item->burnProgress() <= 0.0 || (static_cast<int>(phase * 8.0) % 2 == 0);
+                    if (visible) {
+                        painter->setPen(QPen(QColor(70, 150, 82), 2.0));
+                        painter->setBrush(QColor(252, 255, 250));
+                        painter->drawEllipse(QRectF(stoveRect.center().x() - 13.0,
+                                                    stoveRect.top() - 34.0,
+                                                    26.0,
+                                                    24.0));
+                        painter->setPen(QPen(QColor(64, 190, 86), 3.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+                        painter->drawLine(QPointF(stoveRect.center().x() - 7.0, stoveRect.top() - 21.0),
+                                          QPointF(stoveRect.center().x() - 2.0, stoveRect.top() - 16.0));
+                        painter->drawLine(QPointF(stoveRect.center().x() - 2.0, stoveRect.top() - 16.0),
+                                          QPointF(stoveRect.center().x() + 8.0, stoveRect.top() - 27.0));
+                        painter->setPen(Qt::NoPen);
+                    }
+                } else {
+                    const qreal normalized = qBound<qreal>(0.0, (item->burnProgress() - 0.16) / 0.84, 1.0);
+                    const bool visible = (static_cast<int>(normalized * 10.0) % 2) == 0;
+                    if (visible) {
+                        QPolygonF triangle;
+                        triangle << QPointF(stoveRect.center().x(), stoveRect.top() - 38.0)
+                                 << QPointF(stoveRect.center().x() - 17.0, stoveRect.top() - 8.0)
+                                 << QPointF(stoveRect.center().x() + 17.0, stoveRect.top() - 8.0);
+                        painter->setPen(QPen(QColor(142, 38, 35), 2.0));
+                        painter->setBrush(QColor(235, 63, 52));
+                        painter->drawPolygon(triangle);
+                        painter->setPen(Qt::NoPen);
+                        painter->setBrush(QColor(255, 255, 255));
+                        painter->drawRect(QRectF(stoveRect.center().x() - 2.0, stoveRect.top() - 28.0, 4.0, 13.0));
+                        painter->drawEllipse(QRectF(stoveRect.center().x() - 2.5, stoveRect.top() - 13.0, 5.0, 5.0));
+                    }
+                }
+            } else if (item->isBurnt()) {
+                QPolygonF triangle;
+                triangle << QPointF(stoveRect.center().x(), stoveRect.top() - 38.0)
+                         << QPointF(stoveRect.center().x() - 17.0, stoveRect.top() - 8.0)
+                         << QPointF(stoveRect.center().x() + 17.0, stoveRect.top() - 8.0);
+                painter->setPen(QPen(QColor(68, 38, 38), 2.0));
+                painter->setBrush(QColor(96, 62, 58));
+                painter->drawPolygon(triangle);
+                painter->setPen(Qt::NoPen);
+                painter->setBrush(QColor(255, 255, 255));
+                painter->drawRect(QRectF(stoveRect.center().x() - 2.0, stoveRect.top() - 28.0, 4.0, 13.0));
+                painter->drawEllipse(QRectF(stoveRect.center().x() - 2.5, stoveRect.top() - 13.0, 5.0, 5.0));
+            }
         }
 
         for (KitchenItem *item : *m_kitchenItems) {
@@ -1285,6 +1404,158 @@ public:
 private:
     const qreal *m_phase;
     const QList<KitchenItem *> *m_kitchenItems;
+};
+
+class OrderOverlayItem final : public QGraphicsItem
+{
+public:
+    explicit OrderOverlayItem(const QList<int> *orders, QGraphicsItem *parent = nullptr)
+        : QGraphicsItem(parent)
+        , m_orders(orders)
+    {
+        setZValue(10.0);
+        setAcceptedMouseButtons(Qt::NoButton);
+        setCacheMode(QGraphicsItem::DeviceCoordinateCache);
+    }
+
+    QRectF boundingRect() const override
+    {
+        return QRectF(0.0, 0.0, GameScene::WindowWidth, GameScene::WindowHeight);
+    }
+
+    static bool orderIsPlateDish(int order)
+    {
+        return (order & PlateDishMask) == PlateDishMask;
+    }
+
+    static CarryItemType orderCarryItem(int order)
+    {
+        return orderIsPlateDish(order) ? makePlatedDish(order & PlateIngredientMask) : static_cast<CarryItemType>(order);
+    }
+
+    static void drawSingleIngredientPlate(QPainter *painter, CarryItemType item, const QRectF &rect)
+    {
+        drawCarryItemIcon(painter, CleanPlateItem, rect);
+        const QRectF ingredientRect(rect.center().x() - rect.width() * 0.28,
+                                    rect.center().y() - rect.height() * 0.27,
+                                    rect.width() * 0.56,
+                                    rect.height() * 0.54);
+        drawCarryItemIcon(painter, item, ingredientRect);
+    }
+
+    void paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWidget *) override
+    {
+        painter->setRenderHint(QPainter::Antialiasing, false);
+        painter->setRenderHint(QPainter::SmoothPixmapTransform, false);
+        if (m_orders == nullptr || m_orders->isEmpty()) {
+            return;
+        }
+
+        const int shownCount = qMin(4, m_orders->size());
+        const qreal cardWidth = 116.0;
+        const qreal cardHeight = 78.0;
+        const qreal ingredientTicketHeight = 46.0;
+        const qreal gap = 14.0;
+        const qreal totalWidth = shownCount * cardWidth + (shownCount - 1) * gap;
+        const qreal startX = qMax<qreal>(28.0, (GameScene::WindowWidth - totalWidth) / 2.0 - 170.0);
+        const qreal top = 10.0;
+
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(QColor(246, 244, 226));
+        painter->drawRect(QRectF(startX - 4.0, top + 66.0, totalWidth + 8.0, 6.0));
+
+        for (int i = 0; i < shownCount; ++i) {
+            const qreal x = startX + i * (cardWidth + gap);
+            const int order = m_orders->at(i);
+            const int bits = orderIsPlateDish(order) ? (order & PlateIngredientMask) : 0;
+            const bool hasCucumber = (bits & PlateCucumberBit) != 0 || order == ChoppedCucumberItem;
+            const bool hasFish = (bits & PlateFishBit) != 0 || order == ChoppedShrimpItem;
+            const QRectF paper(x, top + 2.0, cardWidth, cardHeight);
+            const QRectF ticket(x + 22.0, top + cardHeight - 2.0, cardWidth - 44.0, ingredientTicketHeight);
+            const QRectF tab(x + 16.0, top - 2.0, cardWidth - 32.0, 20.0);
+
+            painter->setPen(QPen(QColor(218, 235, 248), 2.0));
+            painter->setBrush(hasFish ? QColor(238, 151, 44) : QColor(49, 158, 42));
+            painter->drawRect(tab);
+            painter->setBrush(QColor(50, 42, 46));
+            painter->drawRect(QRectF(tab.left(), tab.bottom() - 5.0, tab.width(), 5.0));
+
+            painter->setPen(QPen(QColor(146, 176, 196), 2.0));
+            painter->setBrush(QColor(184, 207, 229));
+            painter->drawRect(paper);
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(QColor(238, 249, 255));
+            painter->drawRect(QRectF(paper.left() + 8.0, paper.top() + 9.0, paper.width() - 16.0, paper.height() - 22.0));
+            painter->setBrush(hasFish ? QColor(238, 144, 48) : QColor(58, 158, 42));
+            painter->drawRect(QRectF(paper.left() + 9.0, paper.top() + 4.0, 36.0, 15.0));
+            painter->setBrush(QColor(238, 248, 255));
+            painter->drawRect(QRectF(paper.right() - 26.0, paper.top() + 4.0, 18.0, 52.0));
+            painter->setPen(QPen(QColor(128, 160, 182), 1.0));
+            painter->drawLine(QPointF(paper.left() + 8.0, paper.bottom() - 20.0),
+                              QPointF(paper.right() - 8.0, paper.bottom() - 20.0));
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(QColor(226, 238, 250));
+            painter->drawRect(QRectF(paper.left() + 20.0, paper.bottom() - 10.0, 26.0, 5.0));
+
+            const QRectF dishRect(paper.left() + 22.0, paper.top() + 21.0, paper.width() - 44.0, 36.0);
+            if (order == ChoppedCucumberItem) {
+                drawSingleIngredientPlate(painter, CucumberItem, dishRect);
+            } else if (order == ChoppedShrimpItem) {
+                drawSingleIngredientPlate(painter, ShrimpItem, dishRect);
+            } else {
+                drawCarryItemIcon(painter, orderCarryItem(order), dishRect);
+            }
+
+            painter->setPen(QPen(QColor(139, 184, 205), 2.0));
+            painter->setBrush(QColor(171, 216, 240));
+            painter->drawRect(ticket);
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(QColor(233, 248, 255));
+            painter->drawRect(ticket.adjusted(7.0, 7.0, -7.0, -7.0));
+            painter->setBrush(QColor(255, 255, 255, 130));
+            painter->drawRect(QRectF(ticket.left() + 8.0, ticket.top() + 8.0, ticket.width() - 16.0, 6.0));
+
+            const auto drawIngredient = [&](CarryItemType item, qreal slotX) {
+                painter->setPen(QPen(QColor(164, 190, 204), 1.0));
+                painter->setBrush(QColor(250, 252, 248));
+                painter->drawEllipse(QRectF(ticket.left() + slotX - 2.0, ticket.top() + 13.0, 25.0, 18.0));
+                painter->setPen(Qt::NoPen);
+                drawCarryItemIcon(painter,
+                                  item,
+                                  QRectF(ticket.left() + slotX + 1.0, ticket.top() + 10.0, 23.0, 23.0));
+            };
+            if (orderIsPlateDish(order)) {
+                qreal slot = 4.0;
+                drawIngredient(RiceItem, slot);
+                slot += 18.0;
+                drawIngredient(NoriItem, slot);
+                slot += 18.0;
+                if ((bits & PlateCucumberBit) != 0) {
+                    drawIngredient(CucumberItem, slot);
+                    slot += 18.0;
+                }
+                if ((bits & PlateFishBit) != 0) {
+                    drawIngredient(ShrimpItem, slot);
+                }
+            } else if (order == ChoppedCucumberItem) {
+                drawIngredient(CucumberItem, 26.0);
+            } else if (order == ChoppedShrimpItem) {
+                drawIngredient(ShrimpItem, 26.0);
+            } else {
+                drawIngredient(orderCarryItem(order), 26.0);
+            }
+
+            if (i < shownCount - 1) {
+                painter->setPen(QPen(QColor(246, 244, 226), 6.0, Qt::SolidLine, Qt::RoundCap));
+                painter->drawLine(QPointF(paper.right() + 2.0, paper.top() + 50.0),
+                                  QPointF(paper.right() + gap - 2.0, paper.top() + 50.0));
+                painter->setPen(Qt::NoPen);
+            }
+        }
+    }
+
+private:
+    const QList<int> *m_orders;
 };
 
 bool isLeftStation(const KitchenItem *station)
@@ -1476,13 +1747,29 @@ bool itemCanInteractWithStation(CarryItemType carriedItem, const KitchenItem *st
     case KitchenItem::DirtyPlateStationKind:
         return carriedItem == NoItem && station->storedItem() == DirtyPlateItem;
     case KitchenItem::ChoppingStationKind:
-        return isChoppableItem(carriedItem) || carriedItem == NoItem;
+        if (isChoppableItem(carriedItem)) {
+            return station->storedItem() == NoItem;
+        }
+        if (carriedItem == NoItem) {
+            return station->storedItem() != NoItem;
+        }
+        return false;
     case KitchenItem::StoveKind:
-        return carriedItem == RiceItem || carriedItem == NoItem;
+        if (carriedItem == RiceItem) {
+            return station->storedItem() == NoItem && !station->soupReady() && !station->isBurnt();
+        }
+        if (carriedItem == NoItem) {
+            return station->storedItem() != NoItem || station->soupReady() || station->isBurnt();
+        }
+        return false;
     case KitchenItem::SinkStationKind:
         return carriedItem == DirtyPlateItem || (carriedItem == NoItem && station->storedItem() == DirtyPlateItem);
+    case KitchenItem::GarbageStationKind:
+        return carriedItem == BurntRiceItem;
     case KitchenItem::DeliveryWindowKind:
-        return isDeliverableSushi(carriedItem);
+        return isDeliverableSushi(carriedItem)
+               || carriedItem == ChoppedCucumberItem
+               || carriedItem == ChoppedShrimpItem;
     case KitchenItem::CounterKind:
         if (carriedItem == NoItem) {
             return station->storedItem() != NoItem;
@@ -1509,6 +1796,7 @@ GameScene::GameScene(QObject *parent)
     , m_statusText(nullptr)
     , m_bannerText(nullptr)
     , m_dynamicEffectsItem(nullptr)
+    , m_orderOverlayItem(nullptr)
     , m_state(StartMenuState)
     , m_previousState(StartMenuState)
     , m_score(0)
@@ -1520,6 +1808,7 @@ GameScene::GameScene(QObject *parent)
     , m_totalPlateCount(4)
     , m_availableCleanPlates(4)
     , m_dirtyPlateCount(0)
+    , m_orderSpawnTimerSeconds(0.0)
     , m_timeRemainingSeconds(120.0)
     , m_roundDurationSeconds(120.0)
     , m_effectPhase(0.0)
@@ -1597,6 +1886,10 @@ void GameScene::drawUI()
     m_hudOverlay = new HudOverlayItem(WindowWidth, WindowHeight);
     m_hudOverlay->setVisible(false);
     addItem(m_hudOverlay);
+
+    m_orderOverlayItem = new OrderOverlayItem(&m_orderBits);
+    m_orderOverlayItem->setVisible(false);
+    addItem(m_orderOverlayItem);
 
     QFont helpFont;
     helpFont.setPointSize(10);
@@ -1770,9 +2063,10 @@ void GameScene::createKitchenFixtures()
     addKitchenItemRect(QRectF(350.0, 306.0, 98.0, 92.0), KitchenItem::CleanPlateStationKind);
     addKitchenItemRect(QRectF(342.0, 430.0, 104.0, 112.0), KitchenItem::CleanPlateStationKind);
     addKitchenItemRect(QRectF(570.0, 312.0, 78.0, 168.0), KitchenItem::CounterKind);
-    addKitchenItemRect(QRectF(790.0, 488.0, 126.0, 82.0), KitchenItem::SinkStationKind);
-    addKitchenItemRect(QRectF(944.0, 494.0, 86.0, 90.0), KitchenItem::DirtyPlateStationKind);
+    addKitchenItemRect(QRectF(786.0, 492.0, 118.0, 82.0), KitchenItem::SinkStationKind);
+    addKitchenItemRect(QRectF(896.0, 488.0, 84.0, 90.0), KitchenItem::DirtyPlateStationKind);
     addKitchenItemRect(QRectF(780.0, 498.0, 258.0, 80.0), KitchenItem::CounterKind);
+    addKitchenItemRect(QRectF(582.0, 548.0, 52.0, 56.0), KitchenItem::GarbageStationKind);
 
     addKitchenItemRect(QRectF(62.0, 378.0, 112.0, 104.0), KitchenItem::DeliveryWindowKind);
 }
@@ -1802,18 +2096,18 @@ void GameScene::keyPressEvent(QKeyEvent *event)
     }
 
     if (m_state == StartMenuState) {
-        if (event->key() == Qt::Key_W || event->key() == Qt::Key_Up) {
+        if (event->key() == Qt::Key_A || event->key() == Qt::Key_Left) {
             m_menuOverlay->setSelectedIndex((m_menuOverlay->selectedIndex() + MenuOverlayItem::MenuCount - 1)
                                             % MenuOverlayItem::MenuCount);
-        } else if (event->key() == Qt::Key_S || event->key() == Qt::Key_Down) {
+        } else if (event->key() == Qt::Key_D || event->key() == Qt::Key_Right) {
             m_menuOverlay->setSelectedIndex((m_menuOverlay->selectedIndex() + 1) % MenuOverlayItem::MenuCount);
-        } else if (event->key() == Qt::Key_A || event->key() == Qt::Key_Left) {
+        } else if (event->key() == Qt::Key_W || event->key() == Qt::Key_Up) {
             if (m_menuOverlay->selectedIndex() == 0) {
                 m_menuOverlay->setLanguageOption((m_menuOverlay->languageOption() + 1) % 2);
             } else if (m_menuOverlay->selectedIndex() == 1) {
                 m_menuOverlay->setDifficultyOption((m_menuOverlay->difficultyOption() + 2) % 3);
             }
-        } else if (event->key() == Qt::Key_D || event->key() == Qt::Key_Right) {
+        } else if (event->key() == Qt::Key_S || event->key() == Qt::Key_Down) {
             if (m_menuOverlay->selectedIndex() == 0) {
                 m_menuOverlay->setLanguageOption((m_menuOverlay->languageOption() + 1) % 2);
             } else if (m_menuOverlay->selectedIndex() == 1) {
@@ -1903,6 +2197,11 @@ void GameScene::tick()
     }
 
     m_effectPhase += deltaSeconds;
+    m_orderSpawnTimerSeconds += deltaSeconds;
+    if (m_orderSpawnTimerSeconds >= 25.0) {
+        m_orderSpawnTimerSeconds = 0.0;
+        spawnRandomOrder();
+    }
 
     if (isTimedMode()) {
         m_timeRemainingSeconds -= deltaSeconds;
@@ -1927,9 +2226,28 @@ void GameScene::tick()
         if (item->itemKind() == KitchenItem::DeliveryWindowKind && isDeliverableSushi(item->storedItem())) {
             item->setStationProgress(item->stationProgress() + deltaSeconds / 1.5);
             if (item->stationProgress() >= 1.0) {
-                m_score += sushiScoreValue(item->storedItem());
-                ++m_deliveriesCompleted;
-                m_pendingDirtyPlateTimers.append(15.0);
+                if (takeMatchingOrder(platedDishBits(item->storedItem()))) {
+                    m_score += sushiScoreValue(item->storedItem());
+                    ++m_deliveriesCompleted;
+                    m_pendingDirtyPlateTimers.append(15.0);
+                }
+                item->resetState();
+            }
+        }
+        if (item->itemKind() == KitchenItem::DeliveryWindowKind
+            && (item->storedItem() == ChoppedCucumberItem || item->storedItem() == ChoppedShrimpItem)) {
+            item->setStationProgress(item->stationProgress() + deltaSeconds / 1.5);
+            if (item->stationProgress() >= 1.0) {
+                const int order = static_cast<int>(item->storedItem());
+                const int index = m_orderBits.indexOf(order);
+                if (index >= 0) {
+                    m_orderBits.removeAt(index);
+                    m_score += item->storedItem() == ChoppedShrimpItem ? 10 : 8;
+                    ++m_deliveriesCompleted;
+                    if (m_orderOverlayItem != nullptr) {
+                        m_orderOverlayItem->update();
+                    }
+                }
                 item->resetState();
             }
         }
@@ -1952,6 +2270,10 @@ void GameScene::tick()
     }
 
     updateHud();
+    if (m_orderOverlayItem != nullptr) {
+        m_orderOverlayItem->setVisible(true);
+        m_orderOverlayItem->update();
+    }
 }
 
 void GameScene::startGame()
@@ -1968,6 +2290,10 @@ void GameScene::beginRound()
     m_bannerText->setVisible(false);
     for (PlayerItem *player : m_players) {
         player->setVisible(true);
+    }
+    if (m_orderOverlayItem != nullptr) {
+        m_orderOverlayItem->setVisible(true);
+        m_orderOverlayItem->update();
     }
     updateHud();
 }
@@ -1986,6 +2312,9 @@ void GameScene::showMenu()
     }
 
     m_hudOverlay->setVisible(false);
+    if (m_orderOverlayItem != nullptr) {
+        m_orderOverlayItem->setVisible(false);
+    }
     m_statusText->setVisible(false);
     m_bannerText->setVisible(false);
 }
@@ -1996,6 +2325,9 @@ void GameScene::resetKitchenState()
     m_availableCleanPlates = m_totalPlateCount;
     m_dirtyPlateCount = 0;
     m_pendingDirtyPlateTimers.clear();
+    m_orderBits.clear();
+    m_orderSpawnTimerSeconds = 0.0;
+    spawnRandomOrder();
     for (KitchenItem *item : m_kitchenItems) {
         item->resetState();
     }
@@ -2011,6 +2343,45 @@ void GameScene::refreshDishStationVisuals()
         item->setStoredItem(m_dirtyPlateCount > 0 ? DirtyPlateItem : NoItem);
         item->setStoredCount(m_dirtyPlateCount);
     }
+}
+
+void GameScene::spawnRandomOrder()
+{
+    if (m_orderBits.size() >= 4) {
+        return;
+    }
+
+    static const int recipeBits[] = {
+        PlateDishMask | PlateRiceBit | PlateNoriBit | PlateCucumberBit,
+        PlateDishMask | PlateRiceBit | PlateNoriBit | PlateFishBit,
+        PlateDishMask | PlateRiceBit | PlateNoriBit | PlateCucumberBit | PlateFishBit,
+        ChoppedCucumberItem,
+        ChoppedShrimpItem
+    };
+    const int index = QRandomGenerator::global()->bounded(5);
+    m_orderBits.append(recipeBits[index]);
+    if (m_orderOverlayItem != nullptr) {
+        m_orderOverlayItem->update();
+    }
+}
+
+bool GameScene::hasMatchingOrder(int dishBits) const
+{
+    return m_orderBits.contains(PlateDishMask | (dishBits & PlateIngredientMask));
+}
+
+bool GameScene::takeMatchingOrder(int dishBits)
+{
+    const int index = m_orderBits.indexOf(PlateDishMask | (dishBits & PlateIngredientMask));
+    if (index < 0) {
+        return false;
+    }
+
+    m_orderBits.removeAt(index);
+    if (m_orderOverlayItem != nullptr) {
+        m_orderOverlayItem->update();
+    }
+    return true;
 }
 
 void GameScene::updateHud()
@@ -2058,6 +2429,9 @@ void GameScene::finishRound(bool success)
                                    unlocked,
                                    hasNextLevel());
     m_resultOverlay->setVisible(true);
+    if (m_orderOverlayItem != nullptr) {
+        m_orderOverlayItem->setVisible(false);
+    }
     m_bannerText->setVisible(false);
     updateHud();
 }
@@ -2121,6 +2495,11 @@ void GameScene::tryInteract(PlayerItem *player)
             player->setCarriedItem(NoItem);
         }
         break;
+    case KitchenItem::GarbageStationKind:
+        if (player->carriedItem() == BurntRiceItem) {
+            player->setCarriedItem(NoItem);
+        }
+        break;
     case KitchenItem::CounterKind:
         if (player->isHandsEmpty() && item->storedItem() != NoItem) {
             player->setCarriedItem(item->storedItem());
@@ -2159,6 +2538,7 @@ void GameScene::tryInteract(PlayerItem *player)
         break;
     case KitchenItem::StoveKind:
         if (item->isBurnt() && player->isHandsEmpty()) {
+            player->setCarriedItem(BurntRiceItem);
             item->resetState();
             break;
         }
@@ -2172,8 +2552,11 @@ void GameScene::tryInteract(PlayerItem *player)
         }
         break;
     case KitchenItem::DeliveryWindowKind:
-        if (isDeliverableSushi(player->carriedItem()) && item->storedItem() == NoItem) {
+        if (item->storedItem() == NoItem
+            && ((isDeliverableSushi(player->carriedItem()) && hasMatchingOrder(platedDishBits(player->carriedItem())))
+                || m_orderBits.contains(static_cast<int>(player->carriedItem())))) {
             item->setStoredItem(player->carriedItem());
+            item->setStoredItemSceneCenter(QPointF(149.0, 477.0));
             item->setStationProgress(0.0);
             player->setCarriedItem(NoItem);
         }
@@ -2194,6 +2577,75 @@ KitchenItem *GameScene::findInteractiveItem(const PlayerItem *player) const
     const QRectF probeRect(probeCenter.x() - 46.0, probeCenter.y() - 42.0, 92.0, 84.0);
     const CarryItemType carriedItem = player->carriedItem();
 
+    if (carriedItem == NoItem) {
+        for (KitchenItem *item : m_kitchenItems) {
+            if (item->itemKind() != KitchenItem::DirtyPlateStationKind || m_dirtyPlateCount <= 0) {
+                continue;
+            }
+
+            const QRectF sceneRect = item->mapToScene(item->boundingRect()).boundingRect();
+            const QRectF pickupRect = sceneRect.adjusted(-120.0, -170.0, 120.0, 130.0);
+            if (pickupRect.contains(origin)
+                || pickupRect.intersects(probeRect)
+                || QLineF(origin, sceneRect.center()).length() < 190.0) {
+                return item;
+            }
+        }
+    }
+
+    auto interactionRect = [](KitchenItem *item, qreal xPadding, qreal yPadding) {
+        return item->mapToScene(item->boundingRect()).boundingRect().adjusted(-xPadding, -yPadding, xPadding, yPadding);
+    };
+
+    auto targetCenter = [](KitchenItem *item) {
+        if (item->storedItem() != NoItem) {
+            return item->storedItemSceneCenter();
+        }
+        return item->mapToScene(item->boundingRect().center());
+    };
+
+    const bool wantsPlateTarget = ingredientBitForPlate(carriedItem) != 0 || isPlateCarrierItem(carriedItem);
+    if (wantsPlateTarget) {
+        KitchenItem *bestPlateTarget = nullptr;
+        qreal bestPlateScore = 1e9;
+        for (KitchenItem *item : m_kitchenItems) {
+            const KitchenItem::Kind kind = item->itemKind();
+            if (kind != KitchenItem::CleanPlateStationKind && kind != KitchenItem::CounterKind) {
+                continue;
+            }
+            if (!itemCanInteractWithStation(carriedItem, item)) {
+                continue;
+            }
+            if (kind == KitchenItem::CleanPlateStationKind
+                && item->storedItem() == NoItem
+                && ingredientBitForPlate(carriedItem) != 0
+                && m_availableCleanPlates <= 0) {
+                continue;
+            }
+
+            const QRectF wideRect = interactionRect(item, 92.0, 128.0);
+            if (!wideRect.contains(origin) && !wideRect.intersects(probeRect)) {
+                continue;
+            }
+
+            qreal score = QLineF(origin, targetCenter(item)).length();
+            if (kind == KitchenItem::CleanPlateStationKind) {
+                score -= 80.0;
+            } else if (isPlateCarrierItem(item->storedItem())) {
+                score -= 120.0;
+            }
+
+            if (score < bestPlateScore) {
+                bestPlateScore = score;
+                bestPlateTarget = item;
+            }
+        }
+
+        if (bestPlateTarget != nullptr) {
+            return bestPlateTarget;
+        }
+    }
+
     KitchenItem *bestItem = nullptr;
     qreal bestScore = 1e9;
     for (KitchenItem *item : m_kitchenItems) {
@@ -2206,12 +2658,20 @@ KitchenItem *GameScene::findInteractiveItem(const PlayerItem *player) const
             continue;
         }
 
-        const qreal distance = QLineF(origin, sceneRect.center()).length();
+        const qreal distance = QLineF(origin, targetCenter(item)).length();
         const qreal compatibilityPenalty = itemCanInteractWithStation(carriedItem, item) ? 0.0 : 1000.0;
         qreal stationPriority = 0.0;
-        if (item->itemKind() == KitchenItem::CleanPlateStationKind
+        if (item->itemKind() == KitchenItem::DirtyPlateStationKind
+            && carriedItem == NoItem
+            && item->storedItem() == DirtyPlateItem) {
+            stationPriority = -600.0;
+        } else if (item->itemKind() == KitchenItem::CleanPlateStationKind
             && (carriedItem == NoItem || carriedItem == CleanPlateItem || ingredientBitForPlate(carriedItem) != 0)) {
-            stationPriority = -35.0;
+            stationPriority = -350.0;
+        } else if (item->itemKind() == KitchenItem::CounterKind
+                   && ingredientBitForPlate(carriedItem) != 0
+                   && isPlateCarrierItem(item->storedItem())) {
+            stationPriority = -250.0;
         }
         const qreal score = distance + compatibilityPenalty + stationPriority;
         if (score < bestScore) {
@@ -2363,6 +2823,10 @@ void GameScene::restartLevel()
     }
 
     m_hudOverlay->setVisible(true);
+    if (m_orderOverlayItem != nullptr) {
+        m_orderOverlayItem->setVisible(false);
+        m_orderOverlayItem->update();
+    }
     m_statusText->setVisible(false);
     m_bannerText->setVisible(false);
     m_tutorialOverlay->setLanguageChinese(m_language == ChineseUi);

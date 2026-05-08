@@ -228,7 +228,7 @@ void KitchenItem::tick(qreal deltaSeconds, bool allowBurning)
         return;
     }
 
-    setStationProgress(m_stationProgress + deltaSeconds / 4.0);
+    setStationProgress(m_stationProgress + deltaSeconds / 14.0);
     if (m_stationProgress >= 1.0) {
         m_soupReady = true;
         m_burnProgress = 0.0;
@@ -294,6 +294,7 @@ void KitchenItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *, QWi
         break;
     case SinkStationKind:
     case DirtyPlateStationKind:
+    case GarbageStationKind:
         drawCounter(painter);
         break;
     case CounterKind:
@@ -326,6 +327,8 @@ QColor KitchenItem::fillColor() const
         return QColor(206, 226, 232);
     case DirtyPlateStationKind:
         return QColor(232, 218, 204);
+    case GarbageStationKind:
+        return QColor(96, 112, 80);
     case CounterKind:
         return QColor(247, 208, 180);
     }

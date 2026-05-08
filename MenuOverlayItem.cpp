@@ -33,8 +33,23 @@ QImage loadArtwork(const QString &preferred)
     return {};
 }
 
+QString coverArtworkName()
+{
+    return QString::fromUtf8("\xE5\x8E\xA8\xE6\x88\xBF\xE5\xB0\x81\xE9\x9D\xA2.png");
+}
+
+QImage menuCover()
+{
+    return loadArtwork(coverArtworkName());
+}
+
 QImage menuPreview()
 {
+    QImage cover = menuCover();
+    if (!cover.isNull()) {
+        return cover;
+    }
+
     QImage image = loadArtwork(QStringLiteral("菜单厨房.png"));
     if (!image.isNull()) {
         return image;
@@ -199,6 +214,64 @@ void MenuOverlayItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *,
 
 void MenuOverlayItem::drawSky(QPainter *painter) const
 {
+    static const QImage cover = menuCover();
+    if (!cover.isNull()) {
+        QLinearGradient backdrop(0.0, 0.0, 0.0, m_rect.height());
+        backdrop.setColorAt(0.0, QColor(255, 239, 247));
+        backdrop.setColorAt(0.54, QColor(255, 231, 243));
+        backdrop.setColorAt(1.0, QColor(242, 218, 232));
+        painter->fillRect(m_rect, backdrop);
+
+        const qreal backgroundScale = qMax(m_rect.width() / cover.width(), m_rect.height() / cover.height());
+        const QSizeF backgroundSize(cover.width() * backgroundScale, cover.height() * backgroundScale);
+        const QRectF backgroundTarget(m_rect.center().x() - backgroundSize.width() / 2.0,
+                                      m_rect.center().y() - backgroundSize.height() / 2.0,
+                                      backgroundSize.width(),
+                                      backgroundSize.height());
+        painter->save();
+        painter->setOpacity(0.18);
+        painter->drawImage(backgroundTarget, cover);
+        painter->restore();
+
+        const QRectF coverArea(82.0, 28.0, m_rect.width() - 164.0, 542.0);
+        const qreal scale = qMin(coverArea.width() / cover.width(), coverArea.height() / cover.height());
+        const QSizeF targetSize(cover.width() * scale, cover.height() * scale);
+        const QRectF target(coverArea.center().x() - targetSize.width() / 2.0,
+                            coverArea.center().y() - targetSize.height() / 2.0,
+                            targetSize.width(),
+                            targetSize.height());
+
+        const QRectF card = target.adjusted(-18.0, -18.0, 18.0, 18.0);
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(QColor(74, 42, 58, 55));
+        painter->drawRoundedRect(card.translated(0.0, 10.0), 24.0, 24.0);
+        painter->setBrush(QColor(255, 248, 251, 230));
+        painter->drawRoundedRect(card, 24.0, 24.0);
+
+        QPainterPath clipPath;
+        clipPath.addRoundedRect(target.adjusted(-2.0, -2.0, 2.0, 2.0), 18.0, 18.0);
+        painter->save();
+        painter->setClipPath(clipPath);
+        painter->drawImage(target, cover);
+        QLinearGradient imageGlow(target.left(), target.top(), target.right(), target.bottom());
+        imageGlow.setColorAt(0.0, QColor(255, 255, 255, 48));
+        imageGlow.setColorAt(0.45, QColor(255, 255, 255, 0));
+        imageGlow.setColorAt(1.0, QColor(255, 190, 214, 34));
+        painter->fillRect(target, imageGlow);
+        painter->restore();
+
+        painter->setPen(QPen(QColor(111, 78, 102, 150), 3.0));
+        painter->setBrush(Qt::NoBrush);
+        painter->drawRoundedRect(target.adjusted(-2.0, -2.0, 2.0, 2.0), 18.0, 18.0);
+
+        QLinearGradient shade(0.0, 0.0, 0.0, m_rect.height());
+        shade.setColorAt(0.0, QColor(255, 255, 255, 8));
+        shade.setColorAt(0.66, QColor(255, 255, 255, 0));
+        shade.setColorAt(1.0, QColor(76, 48, 66, 78));
+        painter->fillRect(m_rect, shade);
+        return;
+    }
+
     QLinearGradient sky(0.0, 0.0, 0.0, m_rect.height());
     sky.setColorAt(0.0, QColor(115, 203, 255));
     sky.setColorAt(0.58, QColor(236, 247, 255));
@@ -232,6 +305,11 @@ void MenuOverlayItem::drawSky(QPainter *painter) const
 
 void MenuOverlayItem::drawKitchenWindow(QPainter *painter) const
 {
+    static const QImage cover = menuCover();
+    if (!cover.isNull()) {
+        return;
+    }
+
     static const QImage preview = menuPreview();
     const QRectF frame(194.0, 192.0, 818.0, 388.0);
     drawHardPanel(painter, frame, QColor(248, 233, 198), QColor(93, 64, 48));
@@ -257,6 +335,11 @@ void MenuOverlayItem::drawKitchenWindow(QPainter *painter) const
 
 void MenuOverlayItem::drawTruck(QPainter *painter) const
 {
+    static const QImage cover = menuCover();
+    if (!cover.isNull()) {
+        return;
+    }
+
     const QRectF logo(218.0, 38.0, 770.0, 128.0);
     painter->setPen(Qt::NoPen);
     painter->setBrush(QColor(80, 46, 30, 80));
@@ -342,8 +425,32 @@ void MenuOverlayItem::drawBottomBar(QPainter *painter) const
     Theme::text(painter,
                 hint,
                 m_languageOption == ChineseLanguage
+                    ? QString::fromUtf8("A/D \xE9\x80\x89\xE6\x8B\xA9   W/S \xE5\x88\x87\xE6\x8D\xA2   Enter \xE7\xA1\xAE\xE8\xAE\xA4   Esc \xE8\xBF\x94\xE5\x9B\x9E")
+                    : QStringLiteral("A/D Select   W/S Change   Enter Confirm   Esc Back"),
+                8,
+                true,
+                QColor(255, 246, 226));
+    return;
+
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(QColor(80, 48, 34, 150));
+    painter->drawRoundedRect(hint, 5.0, 5.0);
+    Theme::text(painter,
+                hint,
+                m_languageOption == ChineseLanguage
                     ? QStringLiteral("W/S 选择   A/D 切换   Enter 确认   Esc 返回")
-                    : QStringLiteral("W/S Select   A/D Change   Enter Confirm   Esc Back"),
+                    : QStringLiteral("A/D Select   W/S Change   Enter Confirm   Esc Back"),
+	                8,
+	                true,
+	                QColor(255, 246, 226));
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(QColor(80, 48, 34, 150));
+    painter->drawRoundedRect(hint, 5.0, 5.0);
+    Theme::text(painter,
+                hint,
+                m_languageOption == ChineseLanguage
+                    ? QStringLiteral("A/D 选择   W/S 切换   Enter 确认   Esc 返回")
+                    : QStringLiteral("A/D Select   W/S Change   Enter Confirm   Esc Back"),
                 8,
                 true,
                 QColor(255, 246, 226));

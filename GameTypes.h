@@ -2,6 +2,7 @@
 
 #include <QColor>
 #include <QPainter>
+#include <QPolygonF>
 #include <QRectF>
 #include <QString>
 
@@ -152,51 +153,176 @@ inline void drawCarryItemIcon(QPainter *painter, CarryItemType item, const QRect
         }
 
         const int bits = platedDishBits(item);
+        const bool hasRice = (bits & PlateRiceBit) != 0;
+        const bool hasNori = (bits & PlateNoriBit) != 0;
+        const bool hasCucumber = (bits & PlateCucumberBit) != 0;
+        const bool hasFish = (bits & PlateFishBit) != 0;
+        const bool isFinishedSushi = hasRice && hasNori && (hasCucumber || hasFish);
+
         painter->setPen(Qt::NoPen);
-        if ((bits & PlateRiceBit) != 0) {
+
+        auto drawRoll = [&](const QPointF &rollCenter, qreal rollWidth, qreal rollHeight, bool cucumber, bool fish) {
+            const qreal topHeight = rollHeight * 0.62;
+            const qreal sideHeight = rollHeight * 0.34;
+            const QRectF side(rollCenter.x() - rollWidth / 2.0,
+                              rollCenter.y() - topHeight * 0.12,
+                              rollWidth,
+                              sideHeight);
+            painter->setBrush(QColor(23, 55, 42));
+            painter->drawRoundedRect(side, sideHeight * 0.18, sideHeight * 0.18);
+            painter->setBrush(QColor(54, 103, 73));
+            painter->drawRect(QRectF(side.left() + rollWidth * 0.10,
+                                     side.top() + sideHeight * 0.12,
+                                     rollWidth * 0.14,
+                                     sideHeight * 0.42));
+
+            const QRectF outer(rollCenter.x() - rollWidth / 2.0,
+                               rollCenter.y() - topHeight / 2.0,
+                               rollWidth,
+                               topHeight);
+            painter->setBrush(QColor(35, 75, 55));
+            painter->drawEllipse(outer);
+
+            const QRectF rice = outer.adjusted(rollWidth * 0.15,
+                                               topHeight * 0.16,
+                                               -rollWidth * 0.15,
+                                               -topHeight * 0.16);
+            painter->setBrush(QColor(252, 249, 240));
+            painter->drawEllipse(rice);
+            painter->setBrush(QColor(232, 226, 210));
+            painter->drawEllipse(QRectF(rice.left() + rice.width() * 0.18,
+                                        rice.top() + rice.height() * 0.16,
+                                        rice.width() * 0.12,
+                                        rice.height() * 0.10));
+
+            if (cucumber && fish) {
+                painter->setBrush(QColor(102, 190, 88));
+                painter->drawEllipse(QRectF(rice.left() + rice.width() * 0.14,
+                                            rice.top() + rice.height() * 0.26,
+                                            rice.width() * 0.28,
+                                            rice.height() * 0.44));
+                painter->setBrush(QColor(248, 148, 126));
+                painter->drawEllipse(QRectF(rice.left() + rice.width() * 0.52,
+                                            rice.top() + rice.height() * 0.25,
+                                            rice.width() * 0.30,
+                                            rice.height() * 0.46));
+            } else if (cucumber) {
+                painter->setBrush(QColor(88, 178, 82));
+                painter->drawEllipse(QRectF(rice.center().x() - rice.width() * 0.18,
+                                            rice.center().y() - rice.height() * 0.22,
+                                            rice.width() * 0.36,
+                                            rice.height() * 0.44));
+                painter->setBrush(QColor(178, 232, 132));
+                painter->drawEllipse(QRectF(rice.center().x() - rice.width() * 0.07,
+                                            rice.center().y() - rice.height() * 0.08,
+                                            rice.width() * 0.14,
+                                            rice.height() * 0.16));
+            } else if (fish) {
+                painter->setBrush(QColor(247, 150, 130));
+                painter->drawRoundedRect(QRectF(rice.center().x() - rice.width() * 0.24,
+                                               rice.center().y() - rice.height() * 0.20,
+                                               rice.width() * 0.48,
+                                               rice.height() * 0.40),
+                                         rice.height() * 0.08,
+                                         rice.height() * 0.08);
+                painter->setBrush(QColor(255, 210, 188));
+                painter->drawRect(QRectF(rice.center().x() - rice.width() * 0.06,
+                                         rice.center().y() - rice.height() * 0.14,
+                                         rice.width() * 0.12,
+                                         rice.height() * 0.10));
+            }
+
+            painter->setBrush(QColor(255, 255, 255, 120));
+            painter->drawEllipse(QRectF(outer.left() + rollWidth * 0.20,
+                                        outer.top() + topHeight * 0.08,
+                                        rollWidth * 0.22,
+                                        topHeight * 0.12));
+        };
+
+        if (isFinishedSushi) {
+            painter->setBrush(QColor(214, 207, 191, 150));
+            painter->drawEllipse(QRectF(center.x() - plateWidth * 0.32,
+                                        center.y() + plateHeight * 0.06,
+                                        plateWidth * 0.64,
+                                        plateHeight * 0.18));
+
+            const qreal rollWidth = hasCucumber && hasFish ? plateWidth * 0.25 : plateWidth * 0.30;
+            const qreal rollHeight = plateHeight * 0.47;
+            if (hasCucumber && hasFish) {
+                drawRoll(QPointF(center.x() - plateWidth * 0.21, center.y() - plateHeight * 0.03),
+                         rollWidth,
+                         rollHeight,
+                         true,
+                         false);
+                drawRoll(QPointF(center.x(), center.y() + plateHeight * 0.06),
+                         rollWidth,
+                         rollHeight,
+                         true,
+                         true);
+                drawRoll(QPointF(center.x() + plateWidth * 0.21, center.y() - plateHeight * 0.03),
+                         rollWidth,
+                         rollHeight,
+                         false,
+                         true);
+            } else {
+                drawRoll(QPointF(center.x() - plateWidth * 0.15, center.y() - plateHeight * 0.01),
+                         rollWidth,
+                         rollHeight,
+                         hasCucumber,
+                         hasFish);
+                drawRoll(QPointF(center.x() + plateWidth * 0.18, center.y() + plateHeight * 0.05),
+                         rollWidth,
+                         rollHeight,
+                         hasCucumber,
+                         hasFish);
+            }
+            return;
+        }
+
+        if (hasNori) {
+            painter->setBrush(QColor(39, 78, 58));
+            painter->drawRoundedRect(QRectF(center.x() - plateWidth * 0.34,
+                                           center.y() + plateHeight * 0.03,
+                                           plateWidth * 0.68,
+                                           plateHeight * 0.20),
+                                     plateHeight * 0.07,
+                                     plateHeight * 0.07);
+        }
+        if (hasRice) {
             painter->setBrush(QColor(250, 248, 242));
-            painter->drawEllipse(plateRect.adjusted(plateWidth * 0.25,
-                                                    plateHeight * 0.12,
-                                                    -plateWidth * 0.22,
-                                                    -plateHeight * 0.16));
+            painter->drawEllipse(QRectF(center.x() - plateWidth * 0.24,
+                                        center.y() - plateHeight * 0.18,
+                                        plateWidth * 0.48,
+                                        plateHeight * 0.34));
             painter->setBrush(QColor(232, 226, 210));
             painter->drawEllipse(QRectF(center.x() + plateWidth * 0.02,
                                         center.y() - plateHeight * 0.14,
-                                        plateWidth * 0.12,
-                                        plateHeight * 0.14));
-        }
-        if ((bits & PlateNoriBit) != 0) {
-            painter->setBrush(QColor(45, 86, 62));
-            painter->drawRoundedRect(QRectF(center.x() - plateWidth * 0.32,
-                                           center.y() + plateHeight * 0.08,
-                                           plateWidth * 0.64,
-                                           plateHeight * 0.18),
-                                     plateHeight * 0.06,
-                                     plateHeight * 0.06);
-        }
-        if ((bits & PlateCucumberBit) != 0) {
-            painter->setBrush(QColor(96, 176, 82));
-            painter->drawEllipse(QRectF(center.x() - plateWidth * 0.18,
-                                        center.y() - plateHeight * 0.16,
-                                        plateWidth * 0.22,
-                                        plateHeight * 0.22));
-            painter->setBrush(QColor(176, 232, 132));
-            painter->drawEllipse(QRectF(center.x() - plateWidth * 0.13,
-                                        center.y() - plateHeight * 0.12,
                                         plateWidth * 0.10,
-                                        plateHeight * 0.10));
+                                        plateHeight * 0.12));
         }
-        if ((bits & PlateFishBit) != 0) {
+        if (hasCucumber) {
+            painter->setBrush(QColor(96, 176, 82));
+            painter->drawEllipse(QRectF(center.x() - plateWidth * 0.24,
+                                        center.y() - plateHeight * 0.09,
+                                        plateWidth * 0.22,
+                                        plateHeight * 0.20));
+            painter->setBrush(QColor(176, 232, 132));
+            painter->drawEllipse(QRectF(center.x() - plateWidth * 0.18,
+                                        center.y() - plateHeight * 0.05,
+                                        plateWidth * 0.09,
+                                        plateHeight * 0.08));
+        }
+        if (hasFish) {
             painter->setBrush(QColor(248, 155, 136));
             painter->drawRoundedRect(QRectF(center.x() + plateWidth * 0.04,
-                                           center.y() - plateHeight * 0.19,
+                                           center.y() - plateHeight * 0.13,
                                            plateWidth * 0.27,
                                            plateHeight * 0.22),
                                      plateHeight * 0.07,
                                      plateHeight * 0.07);
             painter->setBrush(QColor(255, 207, 184));
             painter->drawRect(QRectF(center.x() + plateWidth * 0.10,
-                                     center.y() - plateHeight * 0.16,
+                                     center.y() - plateHeight * 0.10,
                                      plateWidth * 0.07,
                                      plateHeight * 0.06));
         }
